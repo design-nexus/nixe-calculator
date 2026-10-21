@@ -151,6 +151,11 @@ fn history_group(p: &Page) {
 fn keyboard_group(p: &Page) {
     let group = p.group("Keyboard");
     let shortcuts: &[(&[&str], &str)] = &[
+        (&["Alt", "1"], "Standard mode"),
+        (&["Alt", "2"], "Scientific mode"),
+        (&["Alt", "3"], "Programmer mode"),
+        (&["Alt", "4"], "Unit Converter"),
+        (&["Alt", "5"], "Calculation Sheets"),
         (&["0–9", "."], "Enter digits and decimal point"),
         (&["+", "−", "×", "÷"], "Basic arithmetic operations"),
         (&["Enter", "="], "Calculate result"),

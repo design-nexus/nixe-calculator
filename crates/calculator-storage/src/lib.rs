@@ -14,6 +14,14 @@ pub struct HistoryEntry {
     pub is_pinned: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SheetRecord {
+    pub id: i64,
+    pub title: String,
+    pub content: String,
+    pub updated_at: i64,
+}
+
 #[derive(Clone)]
 pub struct CalculatorDb {
     conn: Arc<Mutex<Connection>>,
@@ -59,6 +67,14 @@ impl CalculatorDb {
             );
             CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history (timestamp DESC, id DESC);
             CREATE INDEX IF NOT EXISTS idx_history_pinned ON history (is_pinned DESC, timestamp DESC, id DESC);
+
+            CREATE TABLE IF NOT EXISTS sheets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_sheets_updated ON sheets (updated_at DESC, id DESC);
             ",
         )?;
         Ok(())
@@ -161,6 +177,52 @@ impl CalculatorDb {
         )?;
         Ok(())
     }
+
+    // Sheets operations
+    pub fn create_sheet(&self, title: &str, content: &str) -> anyhow::Result<i64> {
+        let now = chrono::Utc::now().timestamp();
+        let conn = self.conn.lock().unwrap();
+        conn.execute("INSERT INTO sheets (title, content, updated_at) VALUES (?1, ?2, ?3)", params![title, content, now])?;
+        Ok(conn.last_insert_rowid())
+    }
+
+    pub fn list_sheets(&self) -> anyhow::Result<Vec<SheetRecord>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT id, title, content, updated_at FROM sheets ORDER BY updated_at DESC, id DESC")?;
+        let rows = stmt.query_map([], |row| {
+            Ok(SheetRecord { id: row.get(0)?, title: row.get(1)?, content: row.get(2)?, updated_at: row.get(3)? })
+        })?;
+        let mut list = Vec::new();
+        for r in rows {
+            list.push(r?);
+        }
+        Ok(list)
+    }
+
+    pub fn get_sheet(&self, id: i64) -> anyhow::Result<Option<SheetRecord>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT id, title, content, updated_at FROM sheets WHERE id = ?1")?;
+        let mut rows = stmt.query_map(params![id], |row| {
+            Ok(SheetRecord { id: row.get(0)?, title: row.get(1)?, content: row.get(2)?, updated_at: row.get(3)? })
+        })?;
+        if let Some(r) = rows.next() { Ok(Some(r?)) } else { Ok(None) }
+    }
+
+    pub fn update_sheet(&self, id: i64, title: &str, content: &str) -> anyhow::Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE sheets SET title = ?1, content = ?2, updated_at = ?3 WHERE id = ?4",
+            params![title, content, now, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_sheet(&self, id: i64) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM sheets WHERE id = ?1", params![id])?;
+        Ok(())
+    }
 }
 
 fn default_data_dir() -> PathBuf {
@@ -227,5 +289,28 @@ mod tests {
         // Prune to 5
         db.prune_history(5).unwrap();
         assert_eq!(db.list_history(None, 20, 0).unwrap().len(), 5);
+    }
+
+    #[test]
+    fn test_sheets_crud() {
+        let db = CalculatorDb::open_in_memory().unwrap();
+        let id1 = db.create_sheet("Budget", "price = 100\ntax = 10%").unwrap();
+        let id2 = db.create_sheet("Notes", "# Meeting\n$250 split by 5").unwrap();
+
+        let list = db.list_sheets().unwrap();
+        assert_eq!(list.len(), 2);
+
+        let sheet1 = db.get_sheet(id1).unwrap().unwrap();
+        assert_eq!(sheet1.title, "Budget");
+        assert_eq!(sheet1.content, "price = 100\ntax = 10%");
+
+        db.update_sheet(id1, "Updated Budget", "price = 200").unwrap();
+        let updated = db.get_sheet(id1).unwrap().unwrap();
+        assert_eq!(updated.title, "Updated Budget");
+        assert_eq!(updated.content, "price = 200");
+
+        db.delete_sheet(id2).unwrap();
+        assert_eq!(db.list_sheets().unwrap().len(), 1);
+        assert!(db.get_sheet(id2).unwrap().is_none());
     }
 }

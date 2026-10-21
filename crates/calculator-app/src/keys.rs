@@ -20,11 +20,12 @@ pub fn install_calculator_keys(
     let on_toggle_history = std::rc::Rc::new(on_toggle_history);
     let on_switch_mode = std::rc::Rc::new(on_switch_mode);
 
+    let win_weak = window.downgrade();
     controller.connect_key_pressed(move |_, key, _, mods| {
         let ctrl = mods.contains(gdk::ModifierType::CONTROL_MASK);
         let alt = mods.contains(gdk::ModifierType::ALT_MASK);
 
-        // Alt+1, Alt+2, Alt+3 for mode switching
+        // Alt+1 to Alt+5 for mode switching
         if alt {
             match key {
                 gdk::Key::_1 => {
@@ -39,8 +40,28 @@ pub fn install_calculator_keys(
                     on_switch_mode("programmer");
                     return glib::Propagation::Stop;
                 }
+                gdk::Key::_4 => {
+                    on_switch_mode("converter");
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::_5 => {
+                    on_switch_mode("sheets");
+                    return glib::Propagation::Stop;
+                }
                 _ => {}
             }
+        }
+
+        // Check if focus is in a text input (e.g. Converter or Sheets)
+        if let Some(w) = win_weak.upgrade()
+            && let Some(focus) = gtk::prelude::GtkWindowExt::focus(&w)
+            && (focus.is::<gtk::Editable>() || focus.is::<gtk::TextView>())
+        {
+            if ctrl && (key == gdk::Key::h || key == gdk::Key::H) {
+                on_toggle_history();
+                return glib::Propagation::Stop;
+            }
+            return glib::Propagation::Proceed;
         }
 
         if ctrl {

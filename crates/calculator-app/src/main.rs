@@ -7,6 +7,7 @@ mod keys;
 mod prefs;
 mod settings_dialog;
 mod theme;
+mod views;
 mod widgets;
 mod window;
 

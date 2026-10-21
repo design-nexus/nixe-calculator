@@ -2,6 +2,7 @@ use crate::display::DisplayView;
 use crate::history_sidebar::HistorySidebar;
 use crate::keypad::{KeyAction, ProgrammerKeypad, ScientificKeypad, StandardKeypad};
 use crate::keys::install_calculator_keys;
+use crate::views::{ConverterView, SheetsView};
 use crate::{prefs, settings_dialog, theme};
 use calculator_core::programmer::{ProgrammerState, Signedness, WordWidth};
 use calculator_core::scientific::AngleMode;
@@ -20,11 +21,16 @@ use std::str::FromStr;
 pub(crate) struct Ui {
     window: gtk::ApplicationWindow,
     overlay: gtk::Overlay,
+    content_stack: gtk::Stack,
     display: DisplayView,
     keypad_stack: gtk::Stack,
     standard_keypad: StandardKeypad,
     scientific_keypad: ScientificKeypad,
     programmer_keypad: ProgrammerKeypad,
+    #[allow(dead_code)]
+    converter_view: ConverterView,
+    #[allow(dead_code)]
+    sheets_view: SheetsView,
     sidebar: Rc<RefCell<HistorySidebar>>,
     sidebar_container: gtk::Box,
     mode_btn: gtk::Button,
@@ -99,7 +105,7 @@ fn build(app: &gtk::Application) {
     // Mode dropdown button & Popover
     let mode_btn = gtk::Button::with_label("Standard ▾");
     mode_btn.add_css_class("mode-selector");
-    mode_btn.set_tooltip_text(Some("Switch mode (Alt+1 Standard, Alt+2 Scientific, Alt+3 Programmer)"));
+    mode_btn.set_tooltip_text(Some("Switch mode (Alt+1 to Alt+5)"));
 
     let popover = gtk::Popover::new();
     let pop_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -114,10 +120,16 @@ fn build(app: &gtk::Application) {
     btn_m_sci.add_css_class("flat");
     let btn_m_prg = gtk::Button::with_label("Programmer");
     btn_m_prg.add_css_class("flat");
+    let btn_m_conv = gtk::Button::with_label("Unit Converter");
+    btn_m_conv.add_css_class("flat");
+    let btn_m_sheets = gtk::Button::with_label("Calculation Sheets");
+    btn_m_sheets.add_css_class("flat");
 
     pop_box.append(&btn_m_std);
     pop_box.append(&btn_m_sci);
     pop_box.append(&btn_m_prg);
+    pop_box.append(&btn_m_conv);
+    pop_box.append(&btn_m_sheets);
     popover.set_child(Some(&pop_box));
     popover.set_parent(&mode_btn);
 
@@ -138,6 +150,16 @@ fn build(app: &gtk::Application) {
     btn_m_prg.connect_clicked(move |_| {
         p_s3.popdown();
         switch_mode("programmer");
+    });
+    let p_s4 = popover.clone();
+    btn_m_conv.connect_clicked(move |_| {
+        p_s4.popdown();
+        switch_mode("converter");
+    });
+    let p_s5 = popover.clone();
+    btn_m_sheets.connect_clicked(move |_| {
+        p_s5.popdown();
+        switch_mode("sheets");
     });
 
     topbar.append(&mode_btn);
@@ -164,11 +186,16 @@ fn build(app: &gtk::Application) {
 
     calc_v_box.append(&topbar);
 
-    // Display
-    let display = DisplayView::new();
-    calc_v_box.append(&display.root);
+    // Database
+    let db = CalculatorDb::open_default().unwrap_or_else(|_| CalculatorDb::open_in_memory().unwrap());
 
-    // Keypad Stack
+    // Calc View (Display + Keypad Stack)
+    let calc_view = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    calc_view.set_vexpand(true);
+
+    let display = DisplayView::new();
+    calc_view.append(&display.root);
+
     let keypad_stack = gtk::Stack::new();
     keypad_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
 
@@ -181,11 +208,24 @@ fn build(app: &gtk::Application) {
     let programmer_keypad = ProgrammerKeypad::new(handle_action);
     keypad_stack.add_named(&programmer_keypad.root, Some("programmer"));
 
-    calc_v_box.append(&keypad_stack);
+    calc_view.append(&keypad_stack);
+
+    // Content Stack
+    let content_stack = gtk::Stack::new();
+    content_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
+    content_stack.set_vexpand(true);
+    content_stack.add_named(&calc_view, Some("calc"));
+
+    let converter_view = ConverterView::new(toast);
+    content_stack.add_named(&converter_view.root, Some("converter"));
+
+    let sheets_view = SheetsView::new(db.clone(), toast);
+    content_stack.add_named(&sheets_view.root, Some("sheets"));
+
+    calc_v_box.append(&content_stack);
     main_h_box.append(&calc_v_box);
 
-    // Database & History sidebar
-    let db = CalculatorDb::open_default().unwrap_or_else(|_| CalculatorDb::open_in_memory().unwrap());
+    // History sidebar
     let sidebar = HistorySidebar::new(
         db.clone(),
         |formula| {
@@ -237,11 +277,14 @@ fn build(app: &gtk::Application) {
     let state = Rc::new(RefCell::new(Ui {
         window,
         overlay,
+        content_stack,
         display,
         keypad_stack,
         standard_keypad,
         scientific_keypad,
         programmer_keypad,
+        converter_view,
+        sheets_view,
         sidebar,
         sidebar_container,
         mode_btn,
@@ -260,9 +303,9 @@ fn build(app: &gtk::Application) {
 
     UI.with(|u| *u.borrow_mut() = Some(state));
 
-    let saved_mode = prefs::get().calculator_mode;
-    if saved_mode != "standard" {
-        switch_mode(&saved_mode);
+    let initial_mode = std::env::var("CALCULATOR_MODE").unwrap_or_else(|_| prefs::get().calculator_mode);
+    if initial_mode != "standard" {
+        switch_mode(&initial_mode);
     }
 }
 
@@ -270,14 +313,17 @@ pub fn switch_mode(mode: &str) {
     let Some(ui_rc) = ui() else { return };
     let mut ui = ui_rc.borrow_mut();
     ui.mode = mode.to_string();
-    ui.keypad_stack.set_visible_child_name(mode);
 
-    let (label, title, w, h) = match mode {
-        "scientific" => ("Scientific ▾", "Scientific", 500, 580),
-        "programmer" => ("Programmer ▾", "Programmer", 540, 660),
-        _ => ("Standard ▾", "Standard", 360, 540),
+    let (label, title, stack_view, keypad_view, w, h) = match mode {
+        "scientific" => ("Scientific ▾", "Scientific", "calc", "scientific", 500, 580),
+        "programmer" => ("Programmer ▾", "Programmer", "calc", "programmer", 540, 660),
+        "converter" => ("Converter ▾", "Unit Converter", "converter", "standard", 400, 580),
+        "sheets" => ("Sheets ▾", "Calculation Sheets", "sheets", "standard", 680, 580),
+        _ => ("Standard ▾", "Standard", "calc", "standard", 360, 540),
     };
 
+    ui.content_stack.set_visible_child_name(stack_view);
+    ui.keypad_stack.set_visible_child_name(keypad_view);
     ui.mode_btn.set_label(label);
     chrome::set_title(&ui.window, "Calculator", title);
 
@@ -780,6 +826,8 @@ pub fn show_shortcuts() {
         (&["Alt", "1"], "Standard mode"),
         (&["Alt", "2"], "Scientific mode"),
         (&["Alt", "3"], "Programmer mode"),
+        (&["Alt", "4"], "Unit Converter"),
+        (&["Alt", "5"], "Calculation Sheets"),
         (&["0–9", "A–F", "."], "Enter numbers / hex digits"),
         (&["+", "−", "×", "÷"], "Basic arithmetic"),
         (&["&", "|", "~", "^"], "Bitwise AND, OR, NOT, XOR"),

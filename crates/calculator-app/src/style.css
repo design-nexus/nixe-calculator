@@ -300,3 +300,143 @@ scrollbar, scrollbar trough, scrollbar slider {
     font-feature-settings: "tnum" 1;
     min-height: 52px;
 }
+
+/* Unit Converter Styles */
+.converter-view {
+    padding: 8px 12px;
+}
+
+.converter-cat-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: @theme_dim_text;
+}
+
+.converter-dropdown {
+    border-radius: 6px;
+    border: 1px solid @hairline;
+    background: @lift;
+    color: @theme_text;
+}
+
+.converter-card {
+    background: @lift;
+    border: 1px solid @hairline;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.converter-card-title {
+    font-size: 0.78em;
+    font-weight: 700;
+    color: @theme_dim_text;
+    text-transform: uppercase;
+}
+
+.converter-input, .converter-output {
+    font-size: 1.45em;
+    font-weight: 600;
+    color: @theme_text;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    font-feature-settings: "tnum" 1;
+}
+
+.converter-swap-btn {
+    min-height: 32px;
+    min-width: 32px;
+    border-radius: 16px;
+    background: @lift;
+    border: 1px solid @hairline;
+    color: @theme_text;
+    margin: 4px 0;
+}
+
+.converter-swap-btn:hover {
+    background: @row_hover;
+}
+
+.converter-formula {
+    font-size: 0.84em;
+    color: @theme_dim_text;
+    margin-top: 4px;
+    min-height: 20px;
+}
+
+.converter-chips {
+    margin-top: 4px;
+}
+
+.converter-chip {
+    font-size: 0.78em;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 3px 10px;
+    background: @lift;
+    border: 1px solid @hairline;
+    color: @theme_dim_text;
+}
+
+.converter-chip:hover {
+    background: @row_hover;
+    color: @theme_text;
+}
+
+/* Calculation Sheets Styles */
+.sheets-view {
+    padding: 6px 12px;
+}
+
+.sheets-toolbar {
+    min-height: 36px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid @hairline;
+}
+
+.sheet-title-input {
+    font-size: 0.9em;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: @theme_text;
+}
+
+.sheets-editor-pane {
+    background: @lift;
+    border: 1px solid @hairline;
+    border-radius: 8px;
+}
+
+.sheets-text-view {
+    font-size: 0.92em;
+    background: transparent;
+    color: @theme_text;
+}
+
+.sheets-scrolled-results {
+    border-left: 1px solid @hairline;
+    background: alpha(@theme_bg, 0.4);
+}
+
+.sheet-result-row {
+    min-height: 24px;
+    padding: 1px 4px;
+}
+
+.sheet-result-label {
+    font-size: 0.88em;
+    font-feature-settings: "tnum" 1;
+}
+
+.sheet-result-val {
+    color: @theme_accent;
+    font-weight: 600;
+}
+
+.sheet-result-error {
+    color: @theme_danger;
+    font-size: 0.75em;
+}
+

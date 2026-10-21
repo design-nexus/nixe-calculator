@@ -3,17 +3,21 @@ pub mod error;
 pub mod evaluator;
 pub mod formatting;
 pub mod memory;
+pub mod natural;
 pub mod parser;
 pub mod programmer;
 pub mod scientific;
 pub mod token;
+pub mod units;
 
 pub use error::CalcError;
 pub use evaluator::{evaluate_str, evaluate_str_with_mode, preview_str, preview_str_with_mode};
 pub use formatting::{FormatOptions, format_decimal};
 pub use memory::MemoryRegister;
+pub use natural::{LineValue, NaturalSession, SheetLineKind, SheetLineOutput};
 pub use programmer::{ProgrammerState, Radix, Signedness, WordWidth, parse_programmer_radix};
 pub use scientific::{AngleMode, CONST_E, CONST_PI, CONST_TAU, SciFunc, eval_sci_func};
+pub use units::{UNITS, UnitCategory, UnitDefinition, convert, find_unit, units_for_category};
 
 #[cfg(test)]
 mod tests {
