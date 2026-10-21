@@ -1,0 +1,31 @@
+[package]
+name = "nixe-calculator"
+version = "0.1.0"
+description = "A modern, feature-rich desktop calculator for Omarchy and the Nixe suite"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "nixe-calculator"
+path = "src/main.rs"
+
+[dependencies]
+calculator-core = { path = "../calculator-core" }
+calculator-storage = { path = "../calculator-storage" }
+gtk.workspace = true
+gdk.workspace = true
+gio.workspace = true
+glib.workspace = true
+pangocairo.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+async-channel.workspace = true
+nixe-core.workspace = true
+nixe-ui.workspace = true
+nixe-theme.workspace = true
+rust_decimal.workspace = true
+rust_decimal_macros.workspace = true

@@ -1,0 +1,8 @@
+{
+  "name": "nixe-calculator",
+  "version": "0.1.0",
+  "app_id": "io.github.design_nexus.nixe.Calculator",
+  "description": "Modern desktop calculator for Omarchy and the Nixe suite",
+  "binary": "nixe-calculator",
+  "categories": ["Utility", "Calculator"]
+}

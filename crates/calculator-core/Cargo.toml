@@ -1,0 +1,16 @@
+[package]
+name = "calculator-core"
+version = "0.1.0"
+description = "Mathematical expression parsing and evaluation engine for Nixe Calculator"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+rust_decimal = { workspace = true, features = ["maths"] }
+rust_decimal_macros.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+calculator-storage = { path = "../calculator-storage" }
