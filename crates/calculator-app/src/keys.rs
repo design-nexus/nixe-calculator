@@ -9,6 +9,7 @@ pub fn install_calculator_keys(
     on_copy: impl Fn() + 'static,
     on_paste: impl Fn() + 'static,
     on_toggle_history: impl Fn() + 'static,
+    on_switch_mode: impl Fn(&str) + 'static,
 ) {
     let controller = gtk::EventControllerKey::new();
     controller.set_propagation_phase(gtk::PropagationPhase::Capture);
@@ -17,9 +18,30 @@ pub fn install_calculator_keys(
     let on_copy = std::rc::Rc::new(on_copy);
     let on_paste = std::rc::Rc::new(on_paste);
     let on_toggle_history = std::rc::Rc::new(on_toggle_history);
+    let on_switch_mode = std::rc::Rc::new(on_switch_mode);
 
     controller.connect_key_pressed(move |_, key, _, mods| {
         let ctrl = mods.contains(gdk::ModifierType::CONTROL_MASK);
+        let alt = mods.contains(gdk::ModifierType::ALT_MASK);
+
+        // Alt+1, Alt+2, Alt+3 for mode switching
+        if alt {
+            match key {
+                gdk::Key::_1 => {
+                    on_switch_mode("standard");
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::_2 => {
+                    on_switch_mode("scientific");
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::_3 => {
+                    on_switch_mode("programmer");
+                    return glib::Propagation::Stop;
+                }
+                _ => {}
+            }
+        }
 
         if ctrl {
             match key {
@@ -92,6 +114,27 @@ pub fn install_calculator_keys(
                 on_action(KeyAction::Digit('9'));
                 glib::Propagation::Stop
             }
+            // Hex digits A-F
+            gdk::Key::a | gdk::Key::A if !ctrl => {
+                on_action(KeyAction::Digit('A'));
+                glib::Propagation::Stop
+            }
+            gdk::Key::b | gdk::Key::B if !ctrl => {
+                on_action(KeyAction::Digit('B'));
+                glib::Propagation::Stop
+            }
+            gdk::Key::d | gdk::Key::D if !ctrl => {
+                on_action(KeyAction::Digit('D'));
+                glib::Propagation::Stop
+            }
+            gdk::Key::e | gdk::Key::E if !ctrl => {
+                on_action(KeyAction::Digit('E'));
+                glib::Propagation::Stop
+            }
+            gdk::Key::f | gdk::Key::F if !ctrl => {
+                on_action(KeyAction::Digit('F'));
+                glib::Propagation::Stop
+            }
             gdk::Key::period | gdk::Key::comma | gdk::Key::KP_Decimal => {
                 on_action(KeyAction::Dot);
                 glib::Propagation::Stop
@@ -120,12 +163,28 @@ pub fn install_calculator_keys(
                 on_action(KeyAction::Percent);
                 glib::Propagation::Stop
             }
+            gdk::Key::exclam => {
+                on_action(KeyAction::Sci(calculator_core::scientific::SciFunc::Fact));
+                glib::Propagation::Stop
+            }
             gdk::Key::parenleft => {
                 on_action(KeyAction::LParen);
                 glib::Propagation::Stop
             }
             gdk::Key::parenright => {
                 on_action(KeyAction::RParen);
+                glib::Propagation::Stop
+            }
+            gdk::Key::ampersand => {
+                on_action(KeyAction::BitAnd);
+                glib::Propagation::Stop
+            }
+            gdk::Key::bar => {
+                on_action(KeyAction::BitOr);
+                glib::Propagation::Stop
+            }
+            gdk::Key::asciitilde => {
+                on_action(KeyAction::BitNot);
                 glib::Propagation::Stop
             }
             gdk::Key::Return | gdk::Key::KP_Enter | gdk::Key::equal | gdk::Key::KP_Equal => {

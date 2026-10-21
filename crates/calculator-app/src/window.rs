@@ -1,15 +1,18 @@
 use crate::display::DisplayView;
 use crate::history_sidebar::HistorySidebar;
-use crate::keypad::{KeyAction, KeypadView};
+use crate::keypad::{KeyAction, ProgrammerKeypad, ScientificKeypad, StandardKeypad};
 use crate::keys::install_calculator_keys;
 use crate::{prefs, settings_dialog, theme};
-use calculator_core::{CalcError, FormatOptions, MemoryRegister, evaluate_str, format_decimal, preview_str};
+use calculator_core::programmer::{ProgrammerState, Signedness, WordWidth};
+use calculator_core::scientific::AngleMode;
+use calculator_core::{CalcError, FormatOptions, MemoryRegister, evaluate_str_with_mode, format_decimal, preview_str_with_mode};
 use calculator_storage::CalculatorDb;
 use gtk::gdk;
 use gtk::glib;
 use gtk::prelude::*;
 use nixe_ui::chrome;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -18,15 +21,22 @@ pub(crate) struct Ui {
     window: gtk::ApplicationWindow,
     overlay: gtk::Overlay,
     display: DisplayView,
-    keypad: KeypadView,
+    keypad_stack: gtk::Stack,
+    standard_keypad: StandardKeypad,
+    scientific_keypad: ScientificKeypad,
+    programmer_keypad: ProgrammerKeypad,
     sidebar: Rc<RefCell<HistorySidebar>>,
     sidebar_container: gtk::Box,
+    mode_btn: gtk::Button,
     db: CalculatorDb,
     memory: MemoryRegister,
     toast: gtk::Label,
     toast_timer: Option<glib::SourceId>,
 
     // Calculation state
+    mode: String,
+    angle_mode: AngleMode,
+    programmer: ProgrammerState,
     input_buffer: String,
     tape_text: String,
     is_result_shown: bool,
@@ -73,17 +83,12 @@ fn build(app: &gtk::Application) {
         gtk::ApplicationWindow::builder().application(app).title("Calculator").default_width(360).default_height(540).build();
     window.add_css_class("calculator-window");
 
-    // No client-side titlebar: Hyprland manages the window frame
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
     chrome::set_title(&window, "Calculator", "Standard");
 
-    // Overlay for toast and settings card
     let overlay = gtk::Overlay::new();
-
-    // Main horizontal container (left: calc pane, right: history sidebar)
     let main_h_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
-    // Left pane: Calculator view (Top bar, Display, Keypad)
     let calc_v_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     calc_v_box.set_hexpand(true);
 
@@ -91,10 +96,50 @@ fn build(app: &gtk::Application) {
     let topbar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     topbar.add_css_class("calc-topbar");
 
-    // Mode dropdown button
+    // Mode dropdown button & Popover
     let mode_btn = gtk::Button::with_label("Standard ▾");
     mode_btn.add_css_class("mode-selector");
-    mode_btn.set_tooltip_text(Some("Calculator mode (Standard)"));
+    mode_btn.set_tooltip_text(Some("Switch mode (Alt+1 Standard, Alt+2 Scientific, Alt+3 Programmer)"));
+
+    let popover = gtk::Popover::new();
+    let pop_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    pop_box.set_margin_start(6);
+    pop_box.set_margin_end(6);
+    pop_box.set_margin_top(6);
+    pop_box.set_margin_bottom(6);
+
+    let btn_m_std = gtk::Button::with_label("Standard");
+    btn_m_std.add_css_class("flat");
+    let btn_m_sci = gtk::Button::with_label("Scientific");
+    btn_m_sci.add_css_class("flat");
+    let btn_m_prg = gtk::Button::with_label("Programmer");
+    btn_m_prg.add_css_class("flat");
+
+    pop_box.append(&btn_m_std);
+    pop_box.append(&btn_m_sci);
+    pop_box.append(&btn_m_prg);
+    popover.set_child(Some(&pop_box));
+    popover.set_parent(&mode_btn);
+
+    let p_clone = popover.clone();
+    mode_btn.connect_clicked(move |_| p_clone.popup());
+
+    let p_s1 = popover.clone();
+    btn_m_std.connect_clicked(move |_| {
+        p_s1.popdown();
+        switch_mode("standard");
+    });
+    let p_s2 = popover.clone();
+    btn_m_sci.connect_clicked(move |_| {
+        p_s2.popdown();
+        switch_mode("scientific");
+    });
+    let p_s3 = popover.clone();
+    btn_m_prg.connect_clicked(move |_| {
+        p_s3.popdown();
+        switch_mode("programmer");
+    });
+
     topbar.append(&mode_btn);
 
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -123,12 +168,20 @@ fn build(app: &gtk::Application) {
     let display = DisplayView::new();
     calc_v_box.append(&display.root);
 
-    // Keypad
-    let keypad = KeypadView::new(|action| {
-        handle_action(action);
-    });
-    calc_v_box.append(&keypad.root);
+    // Keypad Stack
+    let keypad_stack = gtk::Stack::new();
+    keypad_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
 
+    let standard_keypad = StandardKeypad::new(handle_action);
+    keypad_stack.add_named(&standard_keypad.root, Some("standard"));
+
+    let scientific_keypad = ScientificKeypad::new(handle_action);
+    keypad_stack.add_named(&scientific_keypad.root, Some("scientific"));
+
+    let programmer_keypad = ProgrammerKeypad::new(handle_action);
+    keypad_stack.add_named(&programmer_keypad.root, Some("programmer"));
+
+    calc_v_box.append(&keypad_stack);
     main_h_box.append(&calc_v_box);
 
     // Database & History sidebar
@@ -165,7 +218,7 @@ fn build(app: &gtk::Application) {
 
     window.set_child(Some(&overlay));
 
-    // Common keys (settings, shortcuts, quit)
+    // Common keys
     nixe_ui::keys::install(
         &window,
         nixe_ui::keys::Common {
@@ -177,22 +230,28 @@ fn build(app: &gtk::Application) {
     );
 
     // Calculator typing keys
-    install_calculator_keys(&window, handle_action, copy_result, paste_to_expression, toggle_history);
+    install_calculator_keys(&window, handle_action, copy_result, paste_to_expression, toggle_history, switch_mode);
 
-    // History button click
     hist_btn.connect_clicked(|_| toggle_history());
 
     let state = Rc::new(RefCell::new(Ui {
         window,
         overlay,
         display,
-        keypad,
+        keypad_stack,
+        standard_keypad,
+        scientific_keypad,
+        programmer_keypad,
         sidebar,
         sidebar_container,
+        mode_btn,
         db,
         memory: MemoryRegister::new(),
         toast: toast_lbl,
         toast_timer: None,
+        mode: "standard".into(),
+        angle_mode: AngleMode::Degrees,
+        programmer: ProgrammerState::new(),
         input_buffer: String::new(),
         tape_text: String::new(),
         is_result_shown: false,
@@ -200,13 +259,49 @@ fn build(app: &gtk::Application) {
     }));
 
     UI.with(|u| *u.borrow_mut() = Some(state));
+
+    let saved_mode = prefs::get().calculator_mode;
+    if saved_mode != "standard" {
+        switch_mode(&saved_mode);
+    }
+}
+
+pub fn switch_mode(mode: &str) {
+    let Some(ui_rc) = ui() else { return };
+    let mut ui = ui_rc.borrow_mut();
+    ui.mode = mode.to_string();
+    ui.keypad_stack.set_visible_child_name(mode);
+
+    let (label, title, w, h) = match mode {
+        "scientific" => ("Scientific ▾", "Scientific", 500, 580),
+        "programmer" => ("Programmer ▾", "Programmer", 540, 660),
+        _ => ("Standard ▾", "Standard", 360, 540),
+    };
+
+    ui.mode_btn.set_label(label);
+    chrome::set_title(&ui.window, "Calculator", title);
+
+    let is_hist_open = ui.sidebar_container.is_visible();
+    let final_w = if is_hist_open { w + 280 } else { w };
+    ui.window.set_default_size(final_w, h);
+
+    if mode == "programmer" {
+        // Sync programmer values
+        if let Ok(num) = get_current_number(&ui)
+            && let Some(u) = num.to_u64()
+        {
+            ui.programmer.set_value(u);
+        }
+        ui.programmer_keypad.update_state(&ui.programmer);
+    }
+
+    prefs::update(|p| p.calculator_mode = mode.to_string());
 }
 
 pub fn handle_action(action: KeyAction) {
     let Some(ui_rc) = ui() else { return };
     let mut ui = ui_rc.borrow_mut();
 
-    // Clear previous error on any new action
     if ui.error_state.is_some() && action != KeyAction::Clear {
         ui.error_state = None;
         ui.display.set_error(None);
@@ -229,7 +324,6 @@ pub fn handle_action(action: KeyAction) {
             if ui.input_buffer.is_empty() {
                 ui.input_buffer.push_str("0.");
             } else {
-                // Check if current number segment already has a dot
                 let last_segment = ui
                     .input_buffer
                     .rsplit(|ch| ['+', '-', '*', '/', '^', '%', '(', ' ', '×', '÷', '−'].contains(&ch))
@@ -246,6 +340,20 @@ pub fn handle_action(action: KeyAction) {
         KeyAction::OpMul => append_binary_op(&mut ui, " × "),
         KeyAction::OpDiv => append_binary_op(&mut ui, " ÷ "),
         KeyAction::OpPow => append_binary_op(&mut ui, " ^ "),
+        KeyAction::OpMod => append_binary_op(&mut ui, " % "),
+        KeyAction::BitAnd => append_binary_op(&mut ui, " & "),
+        KeyAction::BitOr => append_binary_op(&mut ui, " | "),
+        KeyAction::BitXor => append_binary_op(&mut ui, " ^ "),
+        KeyAction::Shl => append_binary_op(&mut ui, " << "),
+        KeyAction::Shr => append_binary_op(&mut ui, " >> "),
+        KeyAction::BitNot => {
+            if ui.input_buffer.is_empty() {
+                ui.input_buffer.push_str("~0");
+            } else {
+                ui.input_buffer = format!("~({})", ui.input_buffer);
+            }
+            execute_calculation(&mut ui);
+        }
         KeyAction::Percent => {
             if !ui.input_buffer.is_empty() {
                 ui.input_buffer.push('%');
@@ -267,7 +375,7 @@ pub fn handle_action(action: KeyAction) {
             update_readout(&mut ui);
         }
         KeyAction::Negate => {
-            if let Ok(val) = evaluate_str(&ui.input_buffer) {
+            if let Ok(val) = evaluate_str_with_mode(&ui.input_buffer, ui.angle_mode) {
                 let neg = -val;
                 ui.input_buffer = neg.to_string();
                 update_readout(&mut ui);
@@ -282,12 +390,105 @@ pub fn handle_action(action: KeyAction) {
         KeyAction::Reciprocal => {
             wrap_current_or_evaluate(&mut ui, "recip");
         }
+        KeyAction::Sci(func) => {
+            let name = match func {
+                calculator_core::scientific::SciFunc::Sin => "sin",
+                calculator_core::scientific::SciFunc::Cos => "cos",
+                calculator_core::scientific::SciFunc::Tan => "tan",
+                calculator_core::scientific::SciFunc::Asin => "asin",
+                calculator_core::scientific::SciFunc::Acos => "acos",
+                calculator_core::scientific::SciFunc::Atan => "atan",
+                calculator_core::scientific::SciFunc::Sinh => "sinh",
+                calculator_core::scientific::SciFunc::Cosh => "cosh",
+                calculator_core::scientific::SciFunc::Tanh => "tanh",
+                calculator_core::scientific::SciFunc::Ln => "ln",
+                calculator_core::scientific::SciFunc::Log10 => "log",
+                calculator_core::scientific::SciFunc::Log2 => "log2",
+                calculator_core::scientific::SciFunc::Exp => "exp",
+                calculator_core::scientific::SciFunc::Sqrt => "sqrt",
+                calculator_core::scientific::SciFunc::Cbrt => "cbrt",
+                calculator_core::scientific::SciFunc::Sqr => "sqr",
+                calculator_core::scientific::SciFunc::Fact => "fact",
+                calculator_core::scientific::SciFunc::Abs => "abs",
+            };
+            wrap_current_or_evaluate(&mut ui, name);
+        }
+        KeyAction::ConstPi => {
+            if ui.is_result_shown {
+                ui.input_buffer.clear();
+                ui.is_result_shown = false;
+            }
+            ui.input_buffer.push('π');
+            update_readout(&mut ui);
+        }
+        KeyAction::ConstE => {
+            if ui.is_result_shown {
+                ui.input_buffer.clear();
+                ui.is_result_shown = false;
+            }
+            ui.input_buffer.push('e');
+            update_readout(&mut ui);
+        }
+        KeyAction::ConstTau => {
+            if ui.is_result_shown {
+                ui.input_buffer.clear();
+                ui.is_result_shown = false;
+            }
+            ui.input_buffer.push('τ');
+            update_readout(&mut ui);
+        }
+        KeyAction::ToggleAngleMode => {
+            ui.angle_mode = match ui.angle_mode {
+                AngleMode::Degrees => AngleMode::Radians,
+                AngleMode::Radians => AngleMode::Degrees,
+            };
+            ui.scientific_keypad.set_angle_mode(ui.angle_mode);
+            let mode_name = match ui.angle_mode {
+                AngleMode::Degrees => "Degrees (DEG)",
+                AngleMode::Radians => "Radians (RAD)",
+            };
+            toast(&format!("Angle mode: {mode_name}"));
+            update_readout(&mut ui);
+        }
+        KeyAction::ExpNotation => {
+            ui.input_buffer.push('e');
+            ui.is_result_shown = false;
+            update_readout(&mut ui);
+        }
+        // Programmer Mode Actions
+        KeyAction::ToggleBit(bit_idx) => {
+            ui.programmer.toggle_bit(bit_idx);
+            ui.input_buffer = ui.programmer.value.to_string();
+            ui.programmer_keypad.update_state(&ui.programmer);
+            update_readout(&mut ui);
+        }
+        KeyAction::SelectRadix(radix) => {
+            ui.programmer.active_radix = radix;
+            ui.programmer_keypad.update_state(&ui.programmer);
+        }
+        KeyAction::CycleWordWidth => {
+            let next_width = match ui.programmer.width {
+                WordWidth::Qword => WordWidth::Dword,
+                WordWidth::Dword => WordWidth::Word,
+                WordWidth::Word => WordWidth::Byte,
+                WordWidth::Byte => WordWidth::Qword,
+            };
+            ui.programmer.set_width(next_width);
+            ui.programmer_keypad.update_state(&ui.programmer);
+            update_readout(&mut ui);
+        }
+        KeyAction::ToggleSignedness => {
+            ui.programmer.signedness = match ui.programmer.signedness {
+                Signedness::Signed => Signedness::Unsigned,
+                Signedness::Unsigned => Signedness::Signed,
+            };
+            ui.programmer_keypad.update_state(&ui.programmer);
+        }
         KeyAction::Backspace => {
             if ui.is_result_shown {
                 ui.input_buffer.clear();
                 ui.is_result_shown = false;
             } else {
-                // Pop character or trimmed whitespace
                 let trimmed = ui.input_buffer.trim_end();
                 if trimmed.len() < ui.input_buffer.len() {
                     ui.input_buffer = trimmed.to_string();
@@ -302,14 +503,15 @@ pub fn handle_action(action: KeyAction) {
             ui.tape_text.clear();
             ui.is_result_shown = false;
             ui.error_state = None;
+            ui.programmer.set_value(0);
+            ui.programmer_keypad.update_state(&ui.programmer);
             ui.display.set_tape("");
             ui.display.set_preview(None);
             ui.display.set_readout("0");
             ui.display.set_error(None);
         }
         KeyAction::ClearEntry => {
-            // Clears last typed operand
-            if let Some(pos) = ui.input_buffer.rfind(|ch| ['+', '-', '*', '/', '^', '×', '÷', '−'].contains(&ch)) {
+            if let Some(pos) = ui.input_buffer.rfind(|ch| ['+', '-', '*', '/', '^', '×', '÷', '−', '&', '|'].contains(&ch)) {
                 ui.input_buffer.truncate(pos + 1);
             } else {
                 ui.input_buffer.clear();
@@ -323,7 +525,8 @@ pub fn handle_action(action: KeyAction) {
         KeyAction::MemClear => {
             ui.memory.clear();
             ui.display.set_memory_active(false);
-            ui.keypad.set_memory_enabled(false);
+            ui.standard_keypad.set_memory_enabled(false);
+            ui.scientific_keypad.set_memory_enabled(false);
             toast("Memory cleared");
         }
         KeyAction::MemRecall => {
@@ -341,7 +544,8 @@ pub fn handle_action(action: KeyAction) {
             if let Ok(val) = get_current_number(&ui) {
                 ui.memory.store(val);
                 ui.display.set_memory_active(true);
-                ui.keypad.set_memory_enabled(true);
+                ui.standard_keypad.set_memory_enabled(true);
+                ui.scientific_keypad.set_memory_enabled(true);
                 toast(&format!("Memory set: {val}"));
             }
         }
@@ -350,7 +554,8 @@ pub fn handle_action(action: KeyAction) {
                 && ui.memory.add(val).is_ok()
             {
                 ui.display.set_memory_active(true);
-                ui.keypad.set_memory_enabled(true);
+                ui.standard_keypad.set_memory_enabled(true);
+                ui.scientific_keypad.set_memory_enabled(true);
                 toast(&format!("Memory: {}", ui.memory.recall()));
             }
         }
@@ -359,7 +564,8 @@ pub fn handle_action(action: KeyAction) {
                 && ui.memory.sub(val).is_ok()
             {
                 ui.display.set_memory_active(true);
-                ui.keypad.set_memory_enabled(true);
+                ui.standard_keypad.set_memory_enabled(true);
+                ui.scientific_keypad.set_memory_enabled(true);
                 toast(&format!("Memory: {}", ui.memory.recall()));
             }
         }
@@ -372,9 +578,8 @@ fn append_binary_op(ui: &mut Ui, op: &str) {
     }
     ui.is_result_shown = false;
 
-    // Replace operator if buffer already ends with one
     let trimmed = ui.input_buffer.trim_end();
-    if trimmed.ends_with(['+', '-', '*', '/', '^', '×', '÷', '−']) {
+    if trimmed.ends_with(['+', '-', '*', '/', '^', '×', '÷', '−', '&', '|']) {
         let mut s = trimmed.to_string();
         s.pop();
         ui.input_buffer = s;
@@ -396,18 +601,26 @@ fn update_readout(ui: &mut Ui) {
     if ui.input_buffer.is_empty() {
         ui.display.set_readout("0");
         ui.display.set_preview(None);
+        if ui.mode == "programmer" {
+            ui.programmer.set_value(0);
+            ui.programmer_keypad.update_state(&ui.programmer);
+        }
         return;
     }
 
-    // Try evaluating live preview
-    if let Some(preview_val) = preview_str(&ui.input_buffer) {
+    if let Some(preview_val) = preview_str_with_mode(&ui.input_buffer, ui.angle_mode) {
         let formatted_preview = format_decimal(preview_val, &opts);
         ui.display.set_preview(Some(&formatted_preview));
+        if ui.mode == "programmer"
+            && let Some(u) = preview_val.to_u64()
+        {
+            ui.programmer.set_value(u);
+            ui.programmer_keypad.update_state(&ui.programmer);
+        }
     } else {
         ui.display.set_preview(None);
     }
 
-    // Display formatted input buffer
     ui.display.set_readout(&ui.input_buffer);
 }
 
@@ -416,7 +629,7 @@ fn execute_calculation(ui: &mut Ui) {
         return;
     }
     let opts = get_format_options();
-    match evaluate_str(&ui.input_buffer) {
+    match evaluate_str_with_mode(&ui.input_buffer, ui.angle_mode) {
         Ok(res) => {
             let formatted = format_decimal(res, &opts);
             let raw_res = res.to_string();
@@ -428,8 +641,15 @@ fn execute_calculation(ui: &mut Ui) {
             ui.display.set_preview(None);
             ui.display.set_error(None);
 
+            if ui.mode == "programmer"
+                && let Some(u) = res.to_u64()
+            {
+                ui.programmer.set_value(u);
+                ui.programmer_keypad.update_state(&ui.programmer);
+            }
+
             if prefs::get().history_enabled {
-                let _ = ui.db.save_calculation(&expr, &formatted, &raw_res, "standard");
+                let _ = ui.db.save_calculation(&expr, &formatted, &raw_res, &ui.mode);
                 ui.sidebar.borrow().refresh();
             }
 
@@ -453,7 +673,7 @@ fn execute_calculation(ui: &mut Ui) {
 }
 
 fn get_current_number(ui: &Ui) -> Result<Decimal, CalcError> {
-    if let Ok(res) = evaluate_str(&ui.input_buffer) {
+    if let Ok(res) = evaluate_str_with_mode(&ui.input_buffer, ui.angle_mode) {
         Ok(res)
     } else {
         Decimal::from_str(&ui.input_buffer).map_err(|_| CalcError::SyntaxError("Invalid number".into()))
@@ -552,18 +772,22 @@ fn get_format_options() -> FormatOptions {
 }
 
 pub fn show_shortcuts() {
-    let (dialog, card) = nixe_ui::widgets::dialog("Keyboard Shortcuts", 460);
+    let (dialog, card) = nixe_ui::widgets::dialog("Keyboard Shortcuts", 480);
     let list = gtk::Box::new(gtk::Orientation::Vertical, 0);
     list.add_css_class("group-list");
 
     let shortcuts: &[(&[&str], &str)] = &[
-        (&["0–9", "."], "Enter numbers"),
-        (&["+", "−", "×", "÷"], "Basic operators"),
+        (&["Alt", "1"], "Standard mode"),
+        (&["Alt", "2"], "Scientific mode"),
+        (&["Alt", "3"], "Programmer mode"),
+        (&["0–9", "A–F", "."], "Enter numbers / hex digits"),
+        (&["+", "−", "×", "÷"], "Basic arithmetic"),
+        (&["&", "|", "~", "^"], "Bitwise AND, OR, NOT, XOR"),
         (&["Enter", "="], "Calculate result"),
-        (&["Backspace"], "Delete last character"),
-        (&["Esc", "C"], "Clear all"),
-        (&["Ctrl", "H"], "Toggle calculation history"),
-        (&["Ctrl", "C"], "Copy displayed result"),
+        (&["Backspace"], "Delete character"),
+        (&["Esc", "C"], "Clear expression"),
+        (&["Ctrl", "H"], "Toggle history"),
+        (&["Ctrl", "C"], "Copy result"),
         (&["Ctrl", "V"], "Paste formula"),
         (&["Ctrl", "M"], "Memory store (MS)"),
         (&["Ctrl", "R"], "Memory recall (MR)"),
@@ -582,7 +806,7 @@ pub fn show_shortcuts() {
         .hscrollbar_policy(gtk::PolicyType::Never)
         .vscrollbar_policy(gtk::PolicyType::External)
         .child(&list)
-        .max_content_height(400)
+        .max_content_height(420)
         .propagate_natural_height(true)
         .build();
     card.append(&scroll);
@@ -602,7 +826,7 @@ fn snapshot_and_quit(app: &gtk::Application, out: std::path::PathBuf) {
     window.present();
 
     let app = app.clone();
-    glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
+    glib::timeout_add_local_once(std::time::Duration::from_millis(600), move || {
         if let Some(child) = window.child() {
             let paintable = gtk::WidgetPaintable::new(Some(&child));
             let (w, h) = (child.width(), child.height());

@@ -1,3 +1,4 @@
+use crate::scientific::SciFunc;
 use rust_decimal::Decimal;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -8,27 +9,34 @@ pub enum BinaryOp {
     Div,
     Mod,
     Pow,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
     Neg,
     Pos,
+    BitNot,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Func {
-    Sqrt,
-    Sqr,
-    Recip,
-    Abs,
+pub enum Constant {
+    Pi,
+    E,
+    Tau,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Number(Decimal),
+    Const(Constant),
     Binary { op: BinaryOp, left: Box<Expr>, right: Box<Expr> },
     Unary { op: UnaryOp, expr: Box<Expr> },
     Percent(Box<Expr>),
-    Function { func: Func, arg: Box<Expr> },
+    Factorial(Box<Expr>),
+    Function { func: SciFunc, arg: Box<Expr> },
 }

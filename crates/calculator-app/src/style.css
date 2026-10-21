@@ -262,3 +262,41 @@ scrollbar, scrollbar trough, scrollbar slider {
     border: 1px solid @hairline;
     font-size: 0.88em;
 }
+
+/* Radix Display in Programmer Mode */
+.calc-radix-row {
+    min-height: 26px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    transition: background 120ms ease-out;
+}
+
+.calc-radix-row:hover {
+    background: @row_hover;
+}
+
+.calc-radix-row.active-radix {
+    background: @nav_active;
+    border-left: 3px solid @theme_accent;
+}
+
+.calc-radix-tag {
+    font-size: 0.76em;
+    font-weight: 700;
+    color: @theme_dim_text;
+    min-width: 36px;
+}
+
+.calc-radix-val {
+    font-size: 0.88em;
+    font-feature-settings: "tnum" 1;
+    color: @theme_text;
+}
+
+.calc-readout-small {
+    font-size: 1.55em;
+    font-weight: 600;
+    color: @theme_text;
+    font-feature-settings: "tnum" 1;
+    min-height: 52px;
+}

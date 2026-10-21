@@ -1,40 +1,14 @@
+use super::{KeyAction, make_btn, make_mem_btn};
 use gtk::prelude::*;
 use std::rc::Rc;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum KeyAction {
-    Digit(char),
-    Dot,
-    OpAdd,
-    OpSub,
-    OpMul,
-    OpDiv,
-    OpPow,
-    Percent,
-    Negate,
-    Reciprocal,
-    Square,
-    Sqrt,
-    LParen,
-    RParen,
-    Clear,
-    ClearEntry,
-    Backspace,
-    Equals,
-    MemClear,
-    MemRecall,
-    MemAdd,
-    MemSub,
-    MemStore,
-}
-
-pub struct KeypadView {
+pub struct StandardKeypad {
     pub root: gtk::Box,
     pub mem_clear_btn: gtk::Button,
     pub mem_recall_btn: gtk::Button,
 }
 
-impl KeypadView {
+impl StandardKeypad {
     pub fn new(on_action: impl Fn(KeyAction) + 'static) -> Self {
         let on_action = Rc::new(on_action);
         let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -111,24 +85,4 @@ impl KeypadView {
             self.mem_recall_btn.remove_css_class("active");
         }
     }
-}
-
-fn make_btn(label: &str, extra_class: &str, action: KeyAction, cb: Rc<dyn Fn(KeyAction)>) -> gtk::Button {
-    let btn = gtk::Button::with_label(label);
-    btn.add_css_class("calc-btn");
-    if !extra_class.is_empty() {
-        btn.add_css_class(extra_class);
-    }
-    btn.set_focusable(false); // Don't steal keyboard focus from window
-    btn.connect_clicked(move |_| cb(action));
-    btn
-}
-
-fn make_mem_btn(label: &str, tooltip: &str, action: KeyAction, cb: Rc<dyn Fn(KeyAction)>) -> gtk::Button {
-    let btn = gtk::Button::with_label(label);
-    btn.add_css_class("mem-btn");
-    btn.set_tooltip_text(Some(tooltip));
-    btn.set_focusable(false);
-    btn.connect_clicked(move |_| cb(action));
-    btn
 }

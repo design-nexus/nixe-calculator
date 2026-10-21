@@ -1,5 +1,6 @@
-use crate::ast::{BinaryOp, Expr, Func, UnaryOp};
+use crate::ast::{BinaryOp, Constant, Expr, UnaryOp};
 use crate::error::CalcError;
+use crate::scientific::SciFunc;
 use crate::token::Token;
 
 pub struct Parser {
@@ -41,22 +42,36 @@ impl Parser {
         let mut lhs = self.parse_prefix()?;
 
         loop {
-            // Check for postfix operators (e.g. %, sqr)
+            // Check for postfix operators: %, !, ²
             if let Some(tok) = self.peek() {
                 if *tok == Token::Percent {
                     self.next();
                     lhs = Expr::Percent(Box::new(lhs));
                     continue;
+                } else if *tok == Token::Exclamation {
+                    self.next();
+                    lhs = Expr::Factorial(Box::new(lhs));
+                    continue;
                 } else if *tok == Token::Sqr {
                     self.next();
-                    lhs = Expr::Function { func: Func::Sqr, arg: Box::new(lhs) };
+                    lhs = Expr::Function { func: SciFunc::Sqr, arg: Box::new(lhs) };
                     continue;
                 }
             }
 
-            // Check for implicit multiplication: e.g. 2(3) or (2)(3) or 2 sqrt(4)
+            // Check for implicit multiplication: e.g. 2(3), 2pi, (2)(3), 2 sqrt(4)
             if let Some(next_tok) = self.peek()
-                && matches!(next_tok, Token::Number(_) | Token::LParen | Token::Sqrt | Token::Ident(_))
+                && matches!(
+                    next_tok,
+                    Token::Number(_)
+                        | Token::ConstPi
+                        | Token::ConstE
+                        | Token::ConstTau
+                        | Token::LParen
+                        | Token::Sqrt
+                        | Token::Sci(_)
+                        | Token::Ident(_)
+                )
             {
                 let (l_bp, r_bp) = (20, 21);
                 if l_bp < min_bp {
@@ -73,6 +88,11 @@ impl Parser {
                 Some(Token::Star) => BinaryOp::Mul,
                 Some(Token::Slash) => BinaryOp::Div,
                 Some(Token::Caret) => BinaryOp::Pow,
+                Some(Token::BitAnd) => BinaryOp::BitAnd,
+                Some(Token::BitOr) => BinaryOp::BitOr,
+                Some(Token::BitXor) => BinaryOp::BitXor,
+                Some(Token::Shl) => BinaryOp::Shl,
+                Some(Token::Shr) => BinaryOp::Shr,
                 _ => break,
             };
 
@@ -94,6 +114,9 @@ impl Parser {
 
         match tok {
             Token::Number(n) => Ok(Expr::Number(n)),
+            Token::ConstPi => Ok(Expr::Const(Constant::Pi)),
+            Token::ConstE => Ok(Expr::Const(Constant::E)),
+            Token::ConstTau => Ok(Expr::Const(Constant::Tau)),
             Token::Plus => {
                 let expr = self.parse_expr(25)?;
                 Ok(Expr::Unary { op: UnaryOp::Pos, expr: Box::new(expr) })
@@ -102,6 +125,10 @@ impl Parser {
                 let expr = self.parse_expr(25)?;
                 Ok(Expr::Unary { op: UnaryOp::Neg, expr: Box::new(expr) })
             }
+            Token::BitNot => {
+                let expr = self.parse_expr(25)?;
+                Ok(Expr::Unary { op: UnaryOp::BitNot, expr: Box::new(expr) })
+            }
             Token::LParen => {
                 let expr = self.parse_expr(0)?;
                 match self.next() {
@@ -109,62 +136,48 @@ impl Parser {
                     _ => Err(CalcError::UnbalancedParentheses),
                 }
             }
-            Token::Sqrt => {
-                // If followed by LParen, parse parenthesized; otherwise parse next expression with high precedence
-                let arg = if self.peek() == Some(&Token::LParen) {
-                    self.next();
-                    let inner = self.parse_expr(0)?;
-                    if self.next() != Some(Token::RParen) {
-                        return Err(CalcError::UnbalancedParentheses);
-                    }
-                    inner
-                } else {
-                    self.parse_expr(25)?
-                };
-                Ok(Expr::Function { func: Func::Sqrt, arg: Box::new(arg) })
-            }
-            Token::Sqr => {
-                let arg = self.parse_prefix()?;
-                Ok(Expr::Function { func: Func::Sqr, arg: Box::new(arg) })
-            }
+            Token::Sqrt => self.parse_func_arg(SciFunc::Sqrt),
+            Token::Sqr => self.parse_func_arg(SciFunc::Sqr),
             Token::Recip => {
-                let arg = if self.peek() == Some(&Token::LParen) {
-                    self.next();
-                    let inner = self.parse_expr(0)?;
-                    if self.next() != Some(Token::RParen) {
-                        return Err(CalcError::UnbalancedParentheses);
-                    }
-                    inner
-                } else {
-                    self.parse_expr(25)?
-                };
-                Ok(Expr::Function { func: Func::Recip, arg: Box::new(arg) })
+                let arg = self.parse_prefix()?;
+                Ok(Expr::Binary {
+                    op: BinaryOp::Div,
+                    left: Box::new(Expr::Number(rust_decimal::Decimal::ONE)),
+                    right: Box::new(arg),
+                })
             }
+            Token::Sci(func) => self.parse_func_arg(func),
             Token::Ident(name) => match name.to_lowercase().as_str() {
-                "abs" => {
-                    let arg = if self.peek() == Some(&Token::LParen) {
-                        self.next();
-                        let inner = self.parse_expr(0)?;
-                        if self.next() != Some(Token::RParen) {
-                            return Err(CalcError::UnbalancedParentheses);
-                        }
-                        inner
-                    } else {
-                        self.parse_expr(25)?
-                    };
-                    Ok(Expr::Function { func: Func::Abs, arg: Box::new(arg) })
-                }
+                "mod" => Err(CalcError::SyntaxError("Expected left operand before 'mod'".into())),
                 other => Err(CalcError::SyntaxError(format!("Unknown identifier: '{other}'"))),
             },
             Token::RParen => Err(CalcError::SyntaxError("Unexpected closing parenthesis ')'".into())),
             other => Err(CalcError::SyntaxError(format!("Unexpected token: {other:?}"))),
         }
     }
+
+    fn parse_func_arg(&mut self, func: SciFunc) -> Result<Expr, CalcError> {
+        let arg = if self.peek() == Some(&Token::LParen) {
+            self.next();
+            let inner = self.parse_expr(0)?;
+            if self.next() != Some(Token::RParen) {
+                return Err(CalcError::UnbalancedParentheses);
+            }
+            inner
+        } else {
+            self.parse_expr(25)?
+        };
+        Ok(Expr::Function { func, arg: Box::new(arg) })
+    }
 }
 
 fn infix_binding_power(op: BinaryOp) -> (u8, u8) {
     match op {
-        BinaryOp::Add | BinaryOp::Sub => (10, 11),
+        BinaryOp::BitOr => (4, 5),
+        BinaryOp::BitXor => (6, 7),
+        BinaryOp::BitAnd => (8, 9),
+        BinaryOp::Shl | BinaryOp::Shr => (10, 11),
+        BinaryOp::Add | BinaryOp::Sub => (12, 13),
         BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => (20, 21),
         BinaryOp::Pow => (31, 30), // right-associative
     }

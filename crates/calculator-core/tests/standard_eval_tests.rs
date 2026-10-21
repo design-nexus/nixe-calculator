@@ -1,4 +1,4 @@
-use calculator_core::{evaluate_str, format_decimal, preview_str, CalcError, FormatOptions, MemoryRegister};
+use calculator_core::{CalcError, FormatOptions, MemoryRegister, evaluate_str, format_decimal, preview_str};
 use calculator_storage::CalculatorDb;
 use rust_decimal_macros::dec;
 
@@ -55,10 +55,7 @@ fn test_memory_and_formatting() {
     mem.sub(dec!(100)).unwrap();
     assert_eq!(mem.recall(), dec!(450));
 
-    let opts = FormatOptions {
-        thousands_separator: true,
-        precision: Some(2),
-    };
+    let opts = FormatOptions { thousands_separator: true, precision: Some(2) };
     assert_eq!(format_decimal(mem.recall(), &opts), "450.00");
 }
 
