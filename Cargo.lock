@@ -117,6 +117,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "calculator-graph"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "calculator-core",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+]
+
+[[package]]
 name = "calculator-storage"
 version = "0.1.0"
 dependencies = [
@@ -708,7 +719,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-channel",
+ "cairo-rs",
  "calculator-core",
+ "calculator-graph",
  "calculator-storage",
  "gdk4",
  "gio",

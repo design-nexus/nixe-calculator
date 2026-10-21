@@ -42,6 +42,7 @@ pub fn preview_str_with_mode(input: &str, angle_mode: AngleMode) -> Option<Decim
 pub fn evaluate(expr: &Expr, angle_mode: AngleMode) -> Result<Decimal, CalcError> {
     match expr {
         Expr::Number(n) => Ok(*n),
+        Expr::Variable(name) => Err(CalcError::SyntaxError(format!("Undefined variable '{name}'"))),
         Expr::Const(c) => match c {
             Constant::Pi => Decimal::from_f64_retain(CONST_PI).ok_or(CalcError::Overflow),
             Constant::E => Decimal::from_f64_retain(CONST_E).ok_or(CalcError::Overflow),
@@ -203,6 +204,84 @@ fn apply_binary_op(op: BinaryOp, left: Decimal, right: Decimal) -> Result<Decima
                     return Err(CalcError::Overflow);
                 }
                 Decimal::from_f64_retain(res_f64).ok_or(CalcError::Overflow)
+            }
+        }
+    }
+}
+
+pub fn eval_f64(expr: &Expr, x: f64, angle_mode: AngleMode) -> Result<f64, CalcError> {
+    match expr {
+        Expr::Number(n) => n.to_f64().ok_or(CalcError::Overflow),
+        Expr::Const(c) => match c {
+            Constant::Pi => Ok(CONST_PI),
+            Constant::E => Ok(CONST_E),
+            Constant::Tau => Ok(CONST_TAU),
+        },
+        Expr::Variable(name) => {
+            if name.eq_ignore_ascii_case("x")
+                || name.eq_ignore_ascii_case("t")
+                || name.eq_ignore_ascii_case("theta")
+                || name.eq_ignore_ascii_case("θ")
+            {
+                Ok(x)
+            } else {
+                Err(CalcError::SyntaxError(format!("Undefined variable '{name}'")))
+            }
+        }
+        Expr::Unary { op, expr } => {
+            let val = eval_f64(expr, x, angle_mode)?;
+            match op {
+                UnaryOp::Neg => Ok(-val),
+                UnaryOp::Pos => Ok(val),
+                UnaryOp::BitNot => Ok(!(val as i64) as f64),
+            }
+        }
+        Expr::Percent(inner) => {
+            let val = eval_f64(inner, x, angle_mode)?;
+            Ok(val / 100.0)
+        }
+        Expr::Factorial(inner) => {
+            let val = eval_f64(inner, x, angle_mode)?;
+            eval_sci_func(crate::scientific::SciFunc::Fact, val, angle_mode)
+        }
+        Expr::Function { func, arg } => {
+            let val = eval_f64(arg, x, angle_mode)?;
+            eval_sci_func(*func, val, angle_mode)
+        }
+        Expr::Binary { op, left, right } => {
+            let l = eval_f64(left, x, angle_mode)?;
+            let r = eval_f64(right, x, angle_mode)?;
+            match op {
+                BinaryOp::Add => Ok(l + r),
+                BinaryOp::Sub => Ok(l - r),
+                BinaryOp::Mul => Ok(l * r),
+                BinaryOp::Div => {
+                    if r.abs() < 1e-15 {
+                        Err(CalcError::DivisionByZero)
+                    } else {
+                        Ok(l / r)
+                    }
+                }
+                BinaryOp::Mod => {
+                    if r.abs() < 1e-15 {
+                        Err(CalcError::DivisionByZero)
+                    } else {
+                        Ok(l % r)
+                    }
+                }
+                BinaryOp::Pow => {
+                    let res = l.powf(r);
+                    if res.is_nan() || res.is_infinite() {
+                        Err(CalcError::InvalidDomain("Undefined power".into()))
+                    } else {
+                        Ok(res)
+                    }
+                }
+                BinaryOp::BitAnd => Ok(((l as i64) & (r as i64)) as f64),
+                BinaryOp::BitOr => Ok(((l as i64) | (r as i64)) as f64),
+                BinaryOp::BitXor => Ok(((l as i64) ^ (r as i64)) as f64),
+                BinaryOp::Shl => Ok(((l as i64).wrapping_shl(r as u32)) as f64),
+                BinaryOp::Shr => Ok(((l as i64).wrapping_shr(r as u32)) as f64),
             }
         }
     }

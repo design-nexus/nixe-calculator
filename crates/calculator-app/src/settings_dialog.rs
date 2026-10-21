@@ -156,6 +156,7 @@ fn keyboard_group(p: &Page) {
         (&["Alt", "3"], "Programmer mode"),
         (&["Alt", "4"], "Unit Converter"),
         (&["Alt", "5"], "Calculation Sheets"),
+        (&["Alt", "6"], "Graphing Calculator"),
         (&["0–9", "."], "Enter digits and decimal point"),
         (&["+", "−", "×", "÷"], "Basic arithmetic operations"),
         (&["Enter", "="], "Calculate result"),

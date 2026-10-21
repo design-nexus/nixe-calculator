@@ -34,6 +34,7 @@ pub enum Constant {
 pub enum Expr {
     Number(Decimal),
     Const(Constant),
+    Variable(String),
     Binary { op: BinaryOp, left: Box<Expr>, right: Box<Expr> },
     Unary { op: UnaryOp, expr: Box<Expr> },
     Percent(Box<Expr>),

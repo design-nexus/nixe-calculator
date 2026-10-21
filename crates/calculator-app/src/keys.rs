@@ -48,6 +48,10 @@ pub fn install_calculator_keys(
                     on_switch_mode("sheets");
                     return glib::Propagation::Stop;
                 }
+                gdk::Key::_6 => {
+                    on_switch_mode("graph");
+                    return glib::Propagation::Stop;
+                }
                 _ => {}
             }
         }

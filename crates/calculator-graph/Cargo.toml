@@ -1,0 +1,15 @@
+[package]
+name = "calculator-graph"
+version = "0.1.0"
+description = "Mathematical graphing, sampling, viewport transformations, and numerical calculus for Nixe Calculator"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+calculator-core = { path = "../calculator-core" }
+serde.workspace = true
+rust_decimal = { workspace = true, features = ["maths"] }
+rust_decimal_macros.workspace = true
+anyhow.workspace = true

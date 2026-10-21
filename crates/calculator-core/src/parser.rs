@@ -8,6 +8,12 @@ pub struct Parser {
     pos: usize,
 }
 
+pub fn parse_str(input: &str) -> Result<Expr, CalcError> {
+    let tokens = crate::token::tokenize(input)?;
+    let mut parser = Parser::new(tokens);
+    parser.parse()
+}
+
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, pos: 0 }
@@ -147,10 +153,13 @@ impl Parser {
                 })
             }
             Token::Sci(func) => self.parse_func_arg(func),
-            Token::Ident(name) => match name.to_lowercase().as_str() {
-                "mod" => Err(CalcError::SyntaxError("Expected left operand before 'mod'".into())),
-                other => Err(CalcError::SyntaxError(format!("Unknown identifier: '{other}'"))),
-            },
+            Token::Ident(name) => {
+                if name.eq_ignore_ascii_case("mod") {
+                    Err(CalcError::SyntaxError("Expected left operand before 'mod'".into()))
+                } else {
+                    Ok(Expr::Variable(name))
+                }
+            }
             Token::RParen => Err(CalcError::SyntaxError("Unexpected closing parenthesis ')'".into())),
             other => Err(CalcError::SyntaxError(format!("Unexpected token: {other:?}"))),
         }

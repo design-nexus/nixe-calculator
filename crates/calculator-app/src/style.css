@@ -440,3 +440,93 @@ scrollbar, scrollbar trough, scrollbar slider {
     font-size: 0.75em;
 }
 
+/* Graphing Calculator Styles */
+.graph-view {
+    background-color: @theme_bg;
+}
+
+.graph-sidebar {
+    border-right: 1px solid @hairline;
+    background-color: @theme_bg;
+}
+
+.graph-sidebar-title {
+    font-size: 0.9em;
+    font-weight: 700;
+    color: @theme_text;
+}
+
+.graph-func-row {
+    padding: 2px 0;
+}
+
+.graph-color-dot {
+    font-size: 1.1em;
+    margin-right: 4px;
+}
+
+.graph-func-entry {
+    font-size: 0.88em;
+    font-family: "JetBrains Mono", monospace;
+    border-radius: 6px;
+    border: 1px solid @hairline;
+    background: @lift;
+    color: @theme_text;
+    padding: 4px 8px;
+}
+
+.graph-tools-box {
+    border-top: 1px solid @hairline;
+    padding-top: 8px;
+}
+
+.graph-tool-toggle {
+    font-size: 0.78em;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 3px 8px;
+    background: @lift;
+    border: 1px solid @hairline;
+    color: @theme_dim_text;
+}
+
+.graph-tool-toggle:hover {
+    background: @row_hover;
+    color: @theme_text;
+}
+
+.graph-tool-toggle.active {
+    background: mix(@theme_bg, @theme_accent, 0.25);
+    color: @theme_accent;
+    border-color: @theme_accent;
+}
+
+.graph-integral-label {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: @theme_accent;
+    min-height: 18px;
+    margin-top: 2px;
+}
+
+.graph-reset-btn {
+    font-size: 0.82em;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 4px;
+    background: @lift;
+    border: 1px solid @hairline;
+    color: @theme_dim_text;
+    margin-top: 4px;
+}
+
+.graph-reset-btn:hover {
+    background: @row_hover;
+    color: @theme_text;
+}
+
+.graph-canvas-frame {
+    background-color: transparent;
+}
+
+

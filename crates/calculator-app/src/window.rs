@@ -2,7 +2,7 @@ use crate::display::DisplayView;
 use crate::history_sidebar::HistorySidebar;
 use crate::keypad::{KeyAction, ProgrammerKeypad, ScientificKeypad, StandardKeypad};
 use crate::keys::install_calculator_keys;
-use crate::views::{ConverterView, SheetsView};
+use crate::views::{ConverterView, GraphView, SheetsView};
 use crate::{prefs, settings_dialog, theme};
 use calculator_core::programmer::{ProgrammerState, Signedness, WordWidth};
 use calculator_core::scientific::AngleMode;
@@ -31,6 +31,8 @@ pub(crate) struct Ui {
     converter_view: ConverterView,
     #[allow(dead_code)]
     sheets_view: SheetsView,
+    #[allow(dead_code)]
+    graph_view: GraphView,
     sidebar: Rc<RefCell<HistorySidebar>>,
     sidebar_container: gtk::Box,
     mode_btn: gtk::Button,
@@ -124,12 +126,15 @@ fn build(app: &gtk::Application) {
     btn_m_conv.add_css_class("flat");
     let btn_m_sheets = gtk::Button::with_label("Calculation Sheets");
     btn_m_sheets.add_css_class("flat");
+    let btn_m_graph = gtk::Button::with_label("Graphing Calculator");
+    btn_m_graph.add_css_class("flat");
 
     pop_box.append(&btn_m_std);
     pop_box.append(&btn_m_sci);
     pop_box.append(&btn_m_prg);
     pop_box.append(&btn_m_conv);
     pop_box.append(&btn_m_sheets);
+    pop_box.append(&btn_m_graph);
     popover.set_child(Some(&pop_box));
     popover.set_parent(&mode_btn);
 
@@ -160,6 +165,11 @@ fn build(app: &gtk::Application) {
     btn_m_sheets.connect_clicked(move |_| {
         p_s5.popdown();
         switch_mode("sheets");
+    });
+    let p_s6 = popover.clone();
+    btn_m_graph.connect_clicked(move |_| {
+        p_s6.popdown();
+        switch_mode("graph");
     });
 
     topbar.append(&mode_btn);
@@ -221,6 +231,9 @@ fn build(app: &gtk::Application) {
 
     let sheets_view = SheetsView::new(db.clone(), toast);
     content_stack.add_named(&sheets_view.root, Some("sheets"));
+
+    let graph_view = GraphView::new(toast);
+    content_stack.add_named(&graph_view.root, Some("graph"));
 
     calc_v_box.append(&content_stack);
     main_h_box.append(&calc_v_box);
@@ -285,6 +298,7 @@ fn build(app: &gtk::Application) {
         programmer_keypad,
         converter_view,
         sheets_view,
+        graph_view,
         sidebar,
         sidebar_container,
         mode_btn,
@@ -319,6 +333,7 @@ pub fn switch_mode(mode: &str) {
         "programmer" => ("Programmer ▾", "Programmer", "calc", "programmer", 540, 660),
         "converter" => ("Converter ▾", "Unit Converter", "converter", "standard", 400, 580),
         "sheets" => ("Sheets ▾", "Calculation Sheets", "sheets", "standard", 680, 580),
+        "graph" => ("Graph ▾", "Graphing Calculator", "graph", "standard", 780, 600),
         _ => ("Standard ▾", "Standard", "calc", "standard", 360, 540),
     };
 
@@ -828,6 +843,7 @@ pub fn show_shortcuts() {
         (&["Alt", "3"], "Programmer mode"),
         (&["Alt", "4"], "Unit Converter"),
         (&["Alt", "5"], "Calculation Sheets"),
+        (&["Alt", "6"], "Graphing Calculator"),
         (&["0–9", "A–F", "."], "Enter numbers / hex digits"),
         (&["+", "−", "×", "÷"], "Basic arithmetic"),
         (&["&", "|", "~", "^"], "Bitwise AND, OR, NOT, XOR"),
