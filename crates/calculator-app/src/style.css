@@ -123,6 +123,34 @@ scrollbar, scrollbar trough, scrollbar slider {
     opacity: 0.35;
 }
 
+/* 64-bit programmer grid button */
+button.bit-btn {
+    min-width: 0;
+    min-height: 0;
+    padding: 2px 0;
+    font-size: 0.72em;
+    font-weight: 600;
+    border-radius: 3px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: @theme_dim_text;
+    transition: background 100ms ease-out, color 100ms ease-out;
+}
+
+button.bit-btn:hover {
+    background: @row_hover;
+    color: @theme_text;
+}
+
+button.bit-btn.active {
+    color: @theme_accent;
+    font-weight: 700;
+}
+
+button.bit-btn:disabled {
+    opacity: 0.25;
+}
+
 /* Keypad Grid */
 .calc-keypad {
     padding: 12px;
@@ -147,6 +175,15 @@ scrollbar, scrollbar trough, scrollbar slider {
 
 .calc-btn:active {
     background: @nav_active;
+}
+
+.calc-keypad-prog {
+    padding: 6px 10px;
+}
+
+.calc-keypad-prog .calc-btn {
+    min-height: 32px;
+    font-size: 0.95em;
 }
 
 .calc-btn-digit {

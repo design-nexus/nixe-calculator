@@ -69,7 +69,15 @@ pub fn overlay() -> Option<gtk::Overlay> {
 
 pub fn present(app: &gtk::Application, _section: Option<&str>) {
     if let Some(ui) = ui() {
+        let (w, h) = {
+            let b = ui.borrow();
+            let mode = b.mode.clone();
+            let (bw, bh) = mode_dimensions(&mode);
+            let is_hist_open = b.sidebar_container.is_visible();
+            (if is_hist_open { bw + 280 } else { bw }, bh)
+        };
         ui.borrow().window.present();
+        ensure_floating(w, h);
         return;
     }
     theme::install();
@@ -82,13 +90,30 @@ pub fn present(app: &gtk::Application, _section: Option<&str>) {
     }
 
     if let Some(ui) = ui() {
+        let (w, h) = {
+            let b = ui.borrow();
+            let mode = b.mode.clone();
+            let (bw, bh) = mode_dimensions(&mode);
+            let is_hist_open = b.sidebar_container.is_visible();
+            (if is_hist_open { bw + 280 } else { bw }, bh)
+        };
         ui.borrow().window.present();
+        ensure_floating(w, h);
     }
 }
 
 fn build(app: &gtk::Application) {
-    let window =
-        gtk::ApplicationWindow::builder().application(app).title("Calculator").default_width(360).default_height(540).build();
+    let initial_mode = std::env::var("CALCULATOR_MODE").unwrap_or_else(|_| prefs::get().calculator_mode);
+    let (init_w, init_h) = mode_dimensions(&initial_mode);
+    let is_hist_open = prefs::get().history_open;
+    let final_init_w = if is_hist_open { init_w + 280 } else { init_w };
+
+    let window = gtk::ApplicationWindow::builder()
+        .application(app)
+        .title("Calculator")
+        .default_width(final_init_w)
+        .default_height(init_h)
+        .build();
     window.add_css_class("calculator-window");
 
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
@@ -107,7 +132,7 @@ fn build(app: &gtk::Application) {
     // Mode dropdown button & Popover
     let mode_btn = gtk::Button::with_label("Standard ▾");
     mode_btn.add_css_class("mode-selector");
-    mode_btn.set_tooltip_text(Some("Switch mode (Alt+1 to Alt+5)"));
+    mode_btn.set_tooltip_text(Some("Switch mode (Alt+1 to Alt+6)"));
 
     let popover = gtk::Popover::new();
     let pop_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -207,6 +232,8 @@ fn build(app: &gtk::Application) {
     calc_view.append(&display.root);
 
     let keypad_stack = gtk::Stack::new();
+    keypad_stack.set_hhomogeneous(false);
+    keypad_stack.set_vhomogeneous(false);
     keypad_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
 
     let standard_keypad = StandardKeypad::new(handle_action);
@@ -222,6 +249,8 @@ fn build(app: &gtk::Application) {
 
     // Content Stack
     let content_stack = gtk::Stack::new();
+    content_stack.set_hhomogeneous(false);
+    content_stack.set_vhomogeneous(false);
     content_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
     content_stack.set_vexpand(true);
     content_stack.add_named(&calc_view, Some("calc"));
@@ -323,40 +352,116 @@ fn build(app: &gtk::Application) {
     }
 }
 
+pub fn mode_dimensions(mode: &str) -> (i32, i32) {
+    match mode {
+        "scientific" => (500, 580),
+        "programmer" => (580, 760),
+        "converter" => (420, 560),
+        "sheets" => (680, 580),
+        "graph" => (780, 600),
+        _ => (360, 540),
+    }
+}
+
 pub fn switch_mode(mode: &str) {
     let Some(ui_rc) = ui() else { return };
-    let mut ui = ui_rc.borrow_mut();
-    ui.mode = mode.to_string();
+    let (final_w, base_h) = {
+        let mut ui = ui_rc.borrow_mut();
+        ui.mode = mode.to_string();
 
-    let (label, title, stack_view, keypad_view, w, h) = match mode {
-        "scientific" => ("Scientific ▾", "Scientific", "calc", "scientific", 500, 580),
-        "programmer" => ("Programmer ▾", "Programmer", "calc", "programmer", 540, 660),
-        "converter" => ("Converter ▾", "Unit Converter", "converter", "standard", 400, 580),
-        "sheets" => ("Sheets ▾", "Calculation Sheets", "sheets", "standard", 680, 580),
-        "graph" => ("Graph ▾", "Graphing Calculator", "graph", "standard", 780, 600),
-        _ => ("Standard ▾", "Standard", "calc", "standard", 360, 540),
+        let (label, title, stack_view, keypad_view) = match mode {
+            "scientific" => ("Scientific ▾", "Scientific", "calc", "scientific"),
+            "programmer" => ("Programmer ▾", "Programmer", "calc", "programmer"),
+            "converter" => ("Converter ▾", "Unit Converter", "converter", "standard"),
+            "sheets" => ("Sheets ▾", "Calculation Sheets", "sheets", "standard"),
+            "graph" => ("Graph ▾", "Graphing Calculator", "graph", "standard"),
+            _ => ("Standard ▾", "Standard", "calc", "standard"),
+        };
+
+        ui.content_stack.set_visible_child_name(stack_view);
+        ui.keypad_stack.set_visible_child_name(keypad_view);
+        ui.mode_btn.set_label(label);
+        chrome::set_title(&ui.window, "Calculator", title);
+
+        let (base_w, base_h) = mode_dimensions(mode);
+        let is_hist_open = ui.sidebar_container.is_visible();
+        let final_w = if is_hist_open { base_w + 280 } else { base_w };
+        ui.window.set_default_size(final_w, base_h);
+
+        if mode == "programmer" {
+            // Sync programmer values
+            if let Ok(num) = get_current_number(&ui)
+                && let Some(u) = num.to_u64()
+            {
+                ui.programmer.set_value(u);
+            }
+            ui.programmer_keypad.update_state(&ui.programmer);
+        }
+
+        (final_w, base_h)
     };
 
-    ui.content_stack.set_visible_child_name(stack_view);
-    ui.keypad_stack.set_visible_child_name(keypad_view);
-    ui.mode_btn.set_label(label);
-    chrome::set_title(&ui.window, "Calculator", title);
+    resize_window(final_w, base_h);
+    prefs::update(|p| p.calculator_mode = mode.to_string());
+}
 
-    let is_hist_open = ui.sidebar_container.is_visible();
-    let final_w = if is_hist_open { w + 280 } else { w };
-    ui.window.set_default_size(final_w, h);
-
-    if mode == "programmer" {
-        // Sync programmer values
-        if let Ok(num) = get_current_number(&ui)
-            && let Some(u) = num.to_u64()
-        {
-            ui.programmer.set_value(u);
-        }
-        ui.programmer_keypad.update_state(&ui.programmer);
+pub fn resize_window(w: i32, h: i32) {
+    if let Some(ui_rc) = ui()
+        && let Ok(ui) = ui_rc.try_borrow()
+    {
+        ui.window.set_default_size(w, h);
     }
 
-    prefs::update(|p| p.calculator_mode = mode.to_string());
+    if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+        let pid = std::process::id();
+        std::thread::spawn(move || {
+            let addr = get_hypr_window_address(pid);
+            let fallback = format!("pid:{pid}");
+            let win_target = addr.as_deref().unwrap_or(&fallback);
+
+            let lua_resize = format!(r#"hl.dsp.window.resize({{ window = "{win_target}", x = {w}, y = {h} }})"#);
+            let _ = std::process::Command::new("hyprctl").args(["dispatch", &lua_resize]).output();
+        });
+    }
+}
+
+pub fn ensure_floating(w: i32, h: i32) {
+    if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+        let pid = std::process::id();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(60));
+            let addr = get_hypr_window_address(pid);
+            let fallback = format!("pid:{pid}");
+            let win_target = addr.as_deref().unwrap_or(&fallback);
+
+            let lua_float = format!(r#"hl.dsp.window.float({{ window = "{win_target}", action = "on" }})"#);
+            let _ = std::process::Command::new("hyprctl").args(["dispatch", &lua_float]).output();
+
+            let lua_resize = format!(r#"hl.dsp.window.resize({{ window = "{win_target}", x = {w}, y = {h} }})"#);
+            let _ = std::process::Command::new("hyprctl").args(["dispatch", &lua_resize]).output();
+
+            let lua_center = format!(r#"hl.dsp.window.center({{ window = "{win_target}" }})"#);
+            let _ = std::process::Command::new("hyprctl").args(["dispatch", &lua_center]).output();
+        });
+    }
+}
+
+fn get_hypr_window_address(pid: u32) -> Option<String> {
+    let output = std::process::Command::new("hyprctl").args(["clients", "-j"]).output().ok()?;
+    let text = String::from_utf8(output.stdout).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let arr = json.as_array()?;
+
+    arr.iter().find_map(|c| {
+        let c_pid = c.get("pid").and_then(|p| p.as_u64())? as u32;
+        let c_class = c.get("class").and_then(|s| s.as_str()).unwrap_or("");
+        if c_pid == pid || c_class == "io.github.design_nexus.nixe.Calculator" {
+            let addr = c.get("address").and_then(|a| a.as_str())?;
+            Some(format!("address:{addr}"))
+        } else {
+            None
+        }
+    })
 }
 
 pub fn handle_action(action: KeyAction) {
@@ -751,17 +856,17 @@ pub fn restore_calculation(val: &str) {
 
 pub fn toggle_history() {
     let Some(ui_rc) = ui() else { return };
-    let ui = ui_rc.borrow();
-    let current_vis = ui.sidebar_container.is_visible();
-    let new_vis = !current_vis;
-    ui.sidebar_container.set_visible(new_vis);
+    let (new_vis, mode) = {
+        let ui = ui_rc.borrow();
+        let current_vis = ui.sidebar_container.is_visible();
+        let new_vis = !current_vis;
+        ui.sidebar_container.set_visible(new_vis);
+        (new_vis, ui.mode.clone())
+    };
 
-    let (w, h) = ui.window.default_size();
-    if new_vis {
-        ui.window.set_default_size(w + 280, h);
-    } else {
-        ui.window.set_default_size((w - 280).max(360), h);
-    }
+    let (base_w, base_h) = mode_dimensions(&mode);
+    let target_w = if new_vis { base_w + 280 } else { base_w };
+    resize_window(target_w, base_h);
 
     prefs::update(|p| p.history_open = new_vis);
 }

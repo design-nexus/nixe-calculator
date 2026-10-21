@@ -40,6 +40,7 @@ impl DisplayView {
         let readout_label = gtk::Label::new(Some("0"));
         readout_label.add_css_class("calc-readout");
         readout_label.set_xalign(1.0);
+        readout_label.set_ellipsize(pango::EllipsizeMode::Start);
         readout_label.set_selectable(true);
         root.append(&readout_label);
 

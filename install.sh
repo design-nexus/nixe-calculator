@@ -11,4 +11,16 @@ install -Dm755 "$binary" "$HOME/.local/bin/nixe-calculator"
 install -Dm644 "$root/data/io.github.design_nexus.nixe.Calculator.desktop" "$share/applications/io.github.design_nexus.nixe.Calculator.desktop"
 install -Dm644 "$root/data/icons/io.github.design_nexus.nixe.Calculator.svg" "$share/icons/hicolor/scalable/apps/io.github.design_nexus.nixe.Calculator.svg"
 if command -v update-desktop-database >/dev/null; then update-desktop-database "$share/applications"; fi
+
+# Hyprland: ensure Calculator opens as a floating window
+hypr="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+if [[ -d $hypr && -f $hypr/nixe.lua ]]; then
+  if ! grep -q 'nixe\.Calculator' "$hypr/nixe.lua"; then
+    printf 'o.window("^io\\\\.github\\\\.design_nexus\\\\.nixe\\\\.Calculator$", { float = true, center = true })\n' >> "$hypr/nixe.lua"
+    if command -v hyprctl >/dev/null 2>&1; then
+      hyprctl reload >/dev/null 2>&1 || true
+    fi
+  fi
+fi
+
 printf 'Installed Calculator without opening it.\n'

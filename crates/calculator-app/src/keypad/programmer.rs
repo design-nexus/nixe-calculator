@@ -77,7 +77,7 @@ impl ProgrammerKeypad {
             for col in 0..16 {
                 let bit_idx = 63 - (row * 16 + col);
                 let btn = gtk::Button::with_label("0");
-                btn.add_css_class("mem-btn");
+                btn.add_css_class("bit-btn");
                 btn.set_tooltip_text(Some(&format!("Bit {bit_idx}")));
                 btn.set_focusable(false);
                 let cb_bit = on_action.clone();
@@ -91,6 +91,7 @@ impl ProgrammerKeypad {
         // 4. Programmer Keypad Grid (6 columns)
         let grid = gtk::Grid::builder().column_spacing(6).row_spacing(6).column_homogeneous(true).row_homogeneous(true).build();
         grid.add_css_class("calc-keypad");
+        grid.add_css_class("calc-keypad-prog");
 
         let mut digit_buttons = Vec::new();
 
@@ -279,6 +280,7 @@ fn make_radix_row(name: &str, radix: Radix, cb: Rc<dyn Fn(KeyAction)>) -> (gtk::
     val.add_css_class("calc-radix-val");
     val.set_hexpand(true);
     val.set_xalign(1.0);
+    val.set_ellipsize(gtk::pango::EllipsizeMode::Start);
     val.set_selectable(true);
     row.append(&val);
 
