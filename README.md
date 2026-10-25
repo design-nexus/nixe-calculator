@@ -6,6 +6,12 @@ Nixe Calculator unites the clean elegance of macOS Calculator, the mathematical 
 
 ---
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe-calculator/main/install.sh | bash
+```
+
 ## Key Features & Modes
 
 Nixe Calculator provides 6 dedicated calculation modes switchable via the topbar dropdown or keyboard shortcuts (`Alt+1` through `Alt+6`):
