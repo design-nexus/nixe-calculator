@@ -4,5 +4,25 @@
   "app_id": "io.github.design_nexus.nixe.Calculator",
   "description": "Modern desktop calculator for Omarchy and the Nixe suite",
   "binary": "nixe-calculator",
-  "categories": ["Utility", "Calculator"]
+  "categories": [
+    "Utility",
+    "Calculator"
+  ],
+  "application": "calculator",
+  "directory": ".",
+  "packages": [
+    "nixe-calculator"
+  ],
+  "manifest": "Cargo.toml",
+  "prepare": [],
+  "binaries": [],
+  "test_commands": [
+    [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "nixe-calculator"
+    ]
+  ]
 }
