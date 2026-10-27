@@ -1,4 +1,4 @@
-//! Nixe Calculator — A modern, fast desktop calculator for Omarchy and Nixe.
+//! Nyx Calculator — A modern, fast desktop calculator for Omarchy and Nyx.
 
 mod display;
 mod history_sidebar;
@@ -14,15 +14,15 @@ mod window;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
-pub const APP_ID: &str = "io.github.design_nexus.nixe.Calculator";
+pub const APP_ID: &str = "io.github.design_nexus.nyx.Calculator";
 
-const USAGE: &str = "Usage: nixe-calculator [OPTIONS]\n\
+const USAGE: &str = "Usage: nyx-calculator [OPTIONS]\n\
 \n\
   --toggle        Close the window if it's open, otherwise open it\n\
   --help, -h      Show this help message\n";
 
 fn main() -> glib::ExitCode {
-    nixe_core::app::init(nixe_core::app::App { slug: "nixe-calculator", name: "Calculator" });
+    nyx_core::app::init(nyx_core::app::App { slug: "nyx-calculator", name: "Calculator" });
 
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {

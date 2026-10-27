@@ -1,8 +1,8 @@
 # Nexus App Style
 
-For **Nixe Suite** apps, read [`nixe/STYLE.md`](nixe/STYLE.md), which is the current
+For **Nyx Suite** apps, read [`nyx/STYLE.md`](nyx/STYLE.md), which is the current
 authoritative guide, and inspect Music's actual `src/window.rs` before writing UI.
-Its required GTK sidebar construction applies to every Nixe app: explicitly set
+Its required GTK sidebar construction applies to every Nyx app: explicitly set
 `hexpand(false)` on the sidebar, navigation list and navigation scroller, give only
 the page column `hexpand(true)`, and use the shared expanded/compact CSS widths.
 A width request is a minimum, not a cap; it does not prevent a sidebar from taking

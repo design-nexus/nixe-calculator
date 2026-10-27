@@ -11,7 +11,7 @@ use calculator_storage::CalculatorDb;
 use gtk::gdk;
 use gtk::glib;
 use gtk::prelude::*;
-use nixe_ui::chrome;
+use nyx_ui::chrome;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use std::cell::RefCell;
@@ -301,9 +301,9 @@ fn build(app: &gtk::Application) {
     window.set_child(Some(&overlay));
 
     // Common keys
-    nixe_ui::keys::install(
+    nyx_ui::keys::install(
         &window,
-        nixe_ui::keys::Common {
+        nyx_ui::keys::Common {
             settings: Some(settings_dialog::open),
             shortcuts: Some(show_shortcuts),
             close: true,
@@ -455,7 +455,7 @@ fn get_hypr_window_address(pid: u32) -> Option<String> {
     arr.iter().find_map(|c| {
         let c_pid = c.get("pid").and_then(|p| p.as_u64())? as u32;
         let c_class = c.get("class").and_then(|s| s.as_str()).unwrap_or("");
-        if c_pid == pid || c_class == "io.github.design_nexus.nixe.Calculator" {
+        if c_pid == pid || c_class == "io.github.design_nexus.nyx.Calculator" {
             let addr = c.get("address").and_then(|a| a.as_str())?;
             Some(format!("address:{addr}"))
         } else {
@@ -938,7 +938,7 @@ fn get_format_options() -> FormatOptions {
 }
 
 pub fn show_shortcuts() {
-    let (dialog, card) = nixe_ui::widgets::dialog("Keyboard Shortcuts", 480);
+    let (dialog, card) = nyx_ui::widgets::dialog("Keyboard Shortcuts", 480);
     let list = gtk::Box::new(gtk::Orientation::Vertical, 0);
     list.add_css_class("group-list");
 
@@ -968,7 +968,7 @@ pub fn show_shortcuts() {
     ];
 
     for (keys, what) in shortcuts {
-        list.append(&nixe_ui::widgets::row(what, "", Some(nixe_ui::widgets::key_caps(keys).upcast_ref())));
+        list.append(&nyx_ui::widgets::row(what, "", Some(nyx_ui::widgets::key_caps(keys).upcast_ref())));
     }
 
     let scroll = gtk::ScrolledWindow::builder()

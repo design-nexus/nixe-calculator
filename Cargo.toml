@@ -11,7 +11,7 @@ members = [
 edition = "2024"
 license = "MIT"
 authors = ["Ken Smith"]
-repository = "https://github.com/design-nexus/nixe-calculator"
+repository = "https://github.com/design-nexus/nyx-calculator"
 
 [workspace.dependencies]
 gtk = { package = "gtk4", version = "0.11", features = ["v4_18"] }
@@ -28,9 +28,9 @@ async-channel = "2"
 rusqlite = { version = "0.40", features = ["bundled"] }
 rust_decimal = "1.36"
 rust_decimal_macros = "1.36"
-nixe-core = { git = "https://github.com/design-nexus/nixe-core.git", rev = "87682e6c936b6a4f006639b1a1c099e96346c07c" }
-nixe-ui = { git = "https://github.com/design-nexus/nixe-design.git", rev = "b8204de80644e263e32783602f2e0ae393578c9e" }
-nixe-theme = { git = "https://github.com/design-nexus/nixe-design.git", rev = "b8204de80644e263e32783602f2e0ae393578c9e" }
+nyx-core = { git = "https://github.com/design-nexus/nyx-core.git", rev = "52cba5e27a3dd5f00c780f53e423302b4b5f9c9c" }
+nyx-ui = { git = "https://github.com/design-nexus/nyx-design.git", rev = "938c638951a53f5874a8276d07ac9dcd68b191ad" }
+nyx-theme = { git = "https://github.com/design-nexus/nyx-design.git", rev = "938c638951a53f5874a8276d07ac9dcd68b191ad" }
 
 [profile.release]
 lto = "thin"

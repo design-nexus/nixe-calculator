@@ -2,13 +2,13 @@
 Type=Application
 Name=Calculator
 GenericName=Calculator
-Comment=Modern desktop calculator for Omarchy and the Nixe suite
-Exec=nixe-calculator %F
-Icon=io.github.design_nexus.nixe.Calculator
+Comment=Modern desktop calculator for Omarchy and the Nyx suite
+Exec=nyx-calculator %F
+Icon=io.github.design_nexus.nyx.Calculator
 Terminal=false
 Categories=Utility;Calculator;GTK;
 Keywords=calculator;math;arithmetic;scientific;history;
 StartupNotify=true
-StartupWMClass=io.github.design_nexus.nixe.Calculator
+StartupWMClass=io.github.design_nexus.nyx.Calculator
 SingleMainWindow=true
 DBusActivatable=false

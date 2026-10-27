@@ -1,9 +1,9 @@
 {
-  "name": "nixe-calculator",
+  "name": "nyx-calculator",
   "version": "0.1.0",
-  "app_id": "io.github.design_nexus.nixe.Calculator",
-  "description": "Modern desktop calculator for Omarchy and the Nixe suite",
-  "binary": "nixe-calculator",
+  "app_id": "io.github.design_nexus.nyx.Calculator",
+  "description": "Modern desktop calculator for Omarchy and the Nyx suite",
+  "binary": "nyx-calculator",
   "categories": [
     "Utility",
     "Calculator"
@@ -11,7 +11,7 @@
   "application": "calculator",
   "directory": ".",
   "packages": [
-    "nixe-calculator"
+    "nyx-calculator"
   ],
   "manifest": "Cargo.toml",
   "prepare": [],
@@ -22,7 +22,7 @@
       "test",
       "--locked",
       "-p",
-      "nixe-calculator"
+      "nyx-calculator"
     ]
   ]
 }

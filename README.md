@@ -1,20 +1,20 @@
-# Nixe Calculator
+# Nyx Calculator
 
-A modern, fast, lightweight desktop calculator for Omarchy and the Nixe application suite.
+A modern, fast, lightweight desktop calculator for Omarchy and the Nyx application suite.
 
-Nixe Calculator unites the clean elegance of macOS Calculator, the mathematical versatility of Windows Calculator, the natural-language scratchpad workflow of Numi, and the interactive graphical capabilities of Desmos into a single native Linux application.
+Nyx Calculator unites the clean elegance of macOS Calculator, the mathematical versatility of Windows Calculator, the natural-language scratchpad workflow of Numi, and the interactive graphical capabilities of Desmos into a single native Linux application.
 
 ---
 
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe-calculator/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx-calculator/main/install.sh | bash
 ```
 
 ## Key Features & Modes
 
-Nixe Calculator provides 6 dedicated calculation modes switchable via the topbar dropdown or keyboard shortcuts (`Alt+1` through `Alt+6`):
+Nyx Calculator provides 6 dedicated calculation modes switchable via the topbar dropdown or keyboard shortcuts (`Alt+1` through `Alt+6`):
 
 ### 1. Standard Mode (`Alt+1`)
 - **Exact Decimal Arithmetic:** 128-bit decimal arithmetic backed by `rust_decimal` with zero floating-point representation errors (`0.1 + 0.2 = 0.3`).
@@ -97,7 +97,7 @@ Nixe Calculator provides 6 dedicated calculation modes switchable via the topbar
 The codebase is organized into an independent Cargo workspace adhering strictly to modular separation between UI and mathematical logic:
 
 ```text
-nixe-calculator/
+nyx-calculator/
 ├── Cargo.toml
 ├── README.md
 ├── STYLE.md
@@ -105,8 +105,8 @@ nixe-calculator/
 ├── uninstall.sh
 ├── data/
 │   ├── icons/
-│   │   └── io.github.design_nexus.nixe.Calculator.svg
-│   └── io.github.design_nexus.nixe.Calculator.desktop
+│   │   └── io.github.design_nexus.nyx.Calculator.svg
+│   └── io.github.design_nexus.nyx.Calculator.desktop
 └── crates/
     ├── calculator-core/         # Independent mathematical engine
     │   ├── src/
@@ -138,7 +138,7 @@ nixe-calculator/
             ├── keypad/          # Standard, Scientific, Programmer keypads
             ├── views/           # Converter, Sheets, and Graph views
             ├── theme.rs         # Omarchy palette synchronization
-            └── style.css        # Scoped CSS matching Nixe STYLE.md
+            └── style.css        # Scoped CSS matching Nyx STYLE.md
 ```
 
 ---
@@ -176,9 +176,9 @@ Run the automated installer to build the optimized release binary and install de
 ```
 
 This installs:
-- Executable binary to `~/.local/bin/nixe-calculator`
-- Desktop entry to `~/.local/share/applications/io.github.design_nexus.nixe.Calculator.desktop`
-- Scalable SVG icon to `~/.local/share/icons/hicolor/scalable/apps/io.github.design_nexus.nixe.Calculator.svg`
+- Executable binary to `~/.local/bin/nyx-calculator`
+- Desktop entry to `~/.local/share/applications/io.github.design_nexus.nyx.Calculator.desktop`
+- Scalable SVG icon to `~/.local/share/icons/hicolor/scalable/apps/io.github.design_nexus.nyx.Calculator.svg`
 - Triggers `update-desktop-database` automatically
 
 ### Uninstall

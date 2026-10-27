@@ -1,14 +1,14 @@
 [package]
-name = "nixe-calculator"
+name = "nyx-calculator"
 version = "0.1.0"
-description = "A modern, feature-rich desktop calculator for Omarchy and the Nixe suite"
+description = "A modern, feature-rich desktop calculator for Omarchy and the Nyx suite"
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "nixe-calculator"
+name = "nyx-calculator"
 path = "src/main.rs"
 
 [dependencies]
@@ -26,8 +26,8 @@ serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
 async-channel.workspace = true
-nixe-core.workspace = true
-nixe-ui.workspace = true
-nixe-theme.workspace = true
+nyx-core.workspace = true
+nyx-ui.workspace = true
+nyx-theme.workspace = true
 rust_decimal.workspace = true
 rust_decimal_macros.workspace = true

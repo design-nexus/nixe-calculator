@@ -1,7 +1,7 @@
 use crate::widgets::{self, Page};
 use crate::{prefs, theme, window};
 use gtk::prelude::*;
-use nixe_ui::settings_card::{self, Spec};
+use nyx_ui::settings_card::{self, Spec};
 
 const GROUPS: &[(&str, &str, &str)] = &[
     ("This window", "applications-graphics-symbolic", "Theme, glow, motion"),
@@ -32,7 +32,7 @@ fn build_content(p: &Page) {
 
 fn window_group(p: &Page) {
     let group = p.group("This window");
-    group.add(&nixe_ui::widgets::start_row());
+    group.add(&nyx_ui::widgets::start_row());
     let current_prefs = prefs::get();
 
     let options: Vec<(String, String)> = theme::all().iter().map(|t| (t.id.clone(), t.name.clone())).collect();

@@ -227,9 +227,9 @@ impl CalculatorDb {
 
 fn default_data_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("XDG_DATA_HOME") {
-        PathBuf::from(dir).join("nixe-calculator")
+        PathBuf::from(dir).join("nyx-calculator")
     } else if let Ok(home) = std::env::var("HOME") {
-        PathBuf::from(home).join(".local/share/nixe-calculator")
+        PathBuf::from(home).join(".local/share/nyx-calculator")
     } else {
         PathBuf::from("./data")
     }

@@ -207,7 +207,7 @@ fn reload_sheets_from_db(state: &Rc<RefCell<SheetsState>>) {
     let list = state.borrow().db.list_sheets().unwrap_or_default();
     if list.is_empty() {
         // Create initial default welcome sheet
-        let default_content = r#"# Nixe Calculation Sheet
+        let default_content = r#"# Nyx Calculation Sheet
 // Natural language math, units & variables
 
 price = 100
