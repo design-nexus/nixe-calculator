@@ -36,15 +36,15 @@ impl StandardKeypad {
         grid.add_css_class("calc-keypad");
 
         // Row 0: %, CE, C, ⌫
-        grid.attach(&make_btn("%", "calc-btn-op", KeyAction::Percent, on_action.clone()), 0, 0, 1, 1);
+        grid.attach(&make_btn("%", "calc-btn-fn", KeyAction::Percent, on_action.clone()), 0, 0, 1, 1);
         grid.attach(&make_btn("CE", "calc-btn-clear", KeyAction::ClearEntry, on_action.clone()), 1, 0, 1, 1);
         grid.attach(&make_btn("C", "calc-btn-clear", KeyAction::Clear, on_action.clone()), 2, 0, 1, 1);
         grid.attach(&make_btn("⌫", "calc-btn-clear", KeyAction::Backspace, on_action.clone()), 3, 0, 1, 1);
 
         // Row 1: 1/x, x², √x, ÷
-        grid.attach(&make_btn("1/x", "calc-btn-op", KeyAction::Reciprocal, on_action.clone()), 0, 1, 1, 1);
-        grid.attach(&make_btn("x²", "calc-btn-op", KeyAction::Square, on_action.clone()), 1, 1, 1, 1);
-        grid.attach(&make_btn("√x", "calc-btn-op", KeyAction::Sqrt, on_action.clone()), 2, 1, 1, 1);
+        grid.attach(&make_btn("1/x", "calc-btn-fn", KeyAction::Reciprocal, on_action.clone()), 0, 1, 1, 1);
+        grid.attach(&make_btn("x²", "calc-btn-fn", KeyAction::Square, on_action.clone()), 1, 1, 1, 1);
+        grid.attach(&make_btn("√x", "calc-btn-fn", KeyAction::Sqrt, on_action.clone()), 2, 1, 1, 1);
         grid.attach(&make_btn("÷", "calc-btn-op", KeyAction::OpDiv, on_action.clone()), 3, 1, 1, 1);
 
         // Row 2: 7, 8, 9, ×

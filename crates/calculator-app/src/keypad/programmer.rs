@@ -40,14 +40,11 @@ impl ProgrammerKeypad {
         root.append(&radix_box);
 
         // 2. Control Row: Word Width & Signedness
-        let ctrl_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        ctrl_row.set_margin_start(12);
-        ctrl_row.set_margin_end(12);
-        ctrl_row.set_margin_top(4);
-        ctrl_row.set_margin_bottom(4);
+        let ctrl_row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        ctrl_row.add_css_class("calc-ctrl-row");
 
         let word_btn = gtk::Button::with_label("QWORD");
-        word_btn.add_css_class("mode-selector");
+        word_btn.add_css_class("mem-btn");
         word_btn.set_tooltip_text(Some("Word width: QWORD (64), DWORD (32), WORD (16), BYTE (8)"));
         word_btn.set_focusable(false);
         let cb_word = on_action.clone();
@@ -55,7 +52,7 @@ impl ProgrammerKeypad {
         ctrl_row.append(&word_btn);
 
         let sign_btn = gtk::Button::with_label("SIGNED");
-        sign_btn.add_css_class("mode-selector");
+        sign_btn.add_css_class("mem-btn");
         sign_btn.set_tooltip_text(Some("Toggle Signed / Unsigned representation"));
         sign_btn.set_focusable(false);
         let cb_sign = on_action.clone();
@@ -65,12 +62,9 @@ impl ProgrammerKeypad {
         root.append(&ctrl_row);
 
         // 3. Interactive 64-bit Grid
-        // 4 rows of 16 bits: 63..48, 47..32, 31..16, 15..0
+        // 4 rows of 16 bits: 63..48, 47..32, 31..16, 15..0, a small gap between nibbles
         let bit_grid = gtk::Grid::builder().column_spacing(2).row_spacing(2).column_homogeneous(true).build();
-        bit_grid.set_margin_start(10);
-        bit_grid.set_margin_end(10);
-        bit_grid.set_margin_top(4);
-        bit_grid.set_margin_bottom(6);
+        bit_grid.add_css_class("calc-bit-grid");
 
         let mut bit_buttons = Vec::with_capacity(64);
         for row in 0..4 {
@@ -78,6 +72,9 @@ impl ProgrammerKeypad {
                 let bit_idx = 63 - (row * 16 + col);
                 let btn = gtk::Button::with_label("0");
                 btn.add_css_class("bit-btn");
+                if col % 4 == 0 && col > 0 {
+                    btn.set_margin_start(6);
+                }
                 btn.set_tooltip_text(Some(&format!("Bit {bit_idx}")));
                 btn.set_focusable(false);
                 let cb_bit = on_action.clone();
@@ -104,9 +101,9 @@ impl ProgrammerKeypad {
         grid.attach(&btn_b, 1, 0, 1, 1);
         digit_buttons.push(('B', btn_b));
 
-        grid.attach(&make_btn("AND", "calc-btn-op", KeyAction::BitAnd, on_action.clone()), 2, 0, 1, 1);
-        grid.attach(&make_btn("OR", "calc-btn-op", KeyAction::BitOr, on_action.clone()), 3, 0, 1, 1);
-        grid.attach(&make_btn("NOT", "calc-btn-op", KeyAction::BitNot, on_action.clone()), 4, 0, 1, 1);
+        grid.attach(&make_btn("AND", "calc-btn-fn", KeyAction::BitAnd, on_action.clone()), 2, 0, 1, 1);
+        grid.attach(&make_btn("OR", "calc-btn-fn", KeyAction::BitOr, on_action.clone()), 3, 0, 1, 1);
+        grid.attach(&make_btn("NOT", "calc-btn-fn", KeyAction::BitNot, on_action.clone()), 4, 0, 1, 1);
         grid.attach(&make_btn("C", "calc-btn-clear", KeyAction::Clear, on_action.clone()), 5, 0, 1, 1);
 
         // Row 1: C, D, XOR, LSH, RSH, ⌫
@@ -118,9 +115,9 @@ impl ProgrammerKeypad {
         grid.attach(&btn_d, 1, 1, 1, 1);
         digit_buttons.push(('D', btn_d));
 
-        grid.attach(&make_btn("XOR", "calc-btn-op", KeyAction::BitXor, on_action.clone()), 2, 1, 1, 1);
-        grid.attach(&make_btn("LSH", "calc-btn-op", KeyAction::Shl, on_action.clone()), 3, 1, 1, 1);
-        grid.attach(&make_btn("RSH", "calc-btn-op", KeyAction::Shr, on_action.clone()), 4, 1, 1, 1);
+        grid.attach(&make_btn("XOR", "calc-btn-fn", KeyAction::BitXor, on_action.clone()), 2, 1, 1, 1);
+        grid.attach(&make_btn("LSH", "calc-btn-fn", KeyAction::Shl, on_action.clone()), 3, 1, 1, 1);
+        grid.attach(&make_btn("RSH", "calc-btn-fn", KeyAction::Shr, on_action.clone()), 4, 1, 1, 1);
         grid.attach(&make_btn("⌫", "calc-btn-clear", KeyAction::Backspace, on_action.clone()), 5, 1, 1, 1);
 
         // Row 2: E, F, mod, (, ), ÷
@@ -132,9 +129,9 @@ impl ProgrammerKeypad {
         grid.attach(&btn_f, 1, 2, 1, 1);
         digit_buttons.push(('F', btn_f));
 
-        grid.attach(&make_btn("mod", "calc-btn-op", KeyAction::OpMod, on_action.clone()), 2, 2, 1, 1);
-        grid.attach(&make_btn("(", "calc-btn-op", KeyAction::LParen, on_action.clone()), 3, 2, 1, 1);
-        grid.attach(&make_btn(")", "calc-btn-op", KeyAction::RParen, on_action.clone()), 4, 2, 1, 1);
+        grid.attach(&make_btn("mod", "calc-btn-fn", KeyAction::OpMod, on_action.clone()), 2, 2, 1, 1);
+        grid.attach(&make_btn("(", "calc-btn-fn", KeyAction::LParen, on_action.clone()), 3, 2, 1, 1);
+        grid.attach(&make_btn(")", "calc-btn-fn", KeyAction::RParen, on_action.clone()), 4, 2, 1, 1);
         grid.attach(&make_btn("÷", "calc-btn-op", KeyAction::OpDiv, on_action.clone()), 5, 2, 1, 1);
 
         // Row 3: 7, 8, 9, ×, ±, CE

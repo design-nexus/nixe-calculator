@@ -1,8 +1,12 @@
 use calculator_core::natural::{NaturalSession, SheetLineKind};
 use calculator_storage::{CalculatorDb, SheetRecord};
+use gtk::gdk;
 use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+/// Each line's result (its text, and whether it's an error), shared with the gutter.
+type LineResults = Rc<RefCell<Vec<Option<(String, bool)>>>>;
 
 pub struct SheetsView {
     pub root: gtk::Box,
@@ -16,8 +20,12 @@ struct SheetsState {
     sheets: Vec<SheetRecord>,
     sheet_dropdown: gtk::DropDown,
     title_entry: gtk::Entry,
+    /// The sheet picker, or the name field while renaming.
+    name_stack: gtk::Stack,
     text_view: gtk::TextView,
-    results_box: gtk::Box,
+    /// Drawn beside each line in `gutter`.
+    results: LineResults,
+    gutter: gtk::DrawingArea,
     session: NaturalSession,
     save_timer: Option<glib::SourceId>,
     on_toast: Rc<dyn Fn(&str)>,
@@ -28,10 +36,6 @@ impl SheetsView {
     pub fn new(db: CalculatorDb, on_toast: impl Fn(&str) + 'static) -> Self {
         let root = gtk::Box::new(gtk::Orientation::Vertical, 8);
         root.add_css_class("sheets-view");
-        root.set_margin_start(12);
-        root.set_margin_end(12);
-        root.set_margin_top(8);
-        root.set_margin_bottom(12);
 
         let toast_rc: Rc<dyn Fn(&str)> = Rc::new(on_toast);
 
@@ -42,43 +46,38 @@ impl SheetsView {
         let sheet_strings = gtk::StringList::new(&[]);
         let sheet_dropdown = gtk::DropDown::new(Some(sheet_strings), None::<gtk::Expression>);
         sheet_dropdown.add_css_class("converter-dropdown");
-        sheet_dropdown.set_hexpand(false);
-        sheet_dropdown.set_size_request(160, -1);
-        toolbar.append(&sheet_dropdown);
+        sheet_dropdown.set_tooltip_text(Some("Switch sheet"));
 
+        // The sheet's name shows once: in the picker, which turns into a field to rename it.
         let title_entry = gtk::Entry::new();
-        title_entry.set_placeholder_text(Some("Sheet Title"));
+        title_entry.set_placeholder_text(Some("Sheet name"));
         title_entry.add_css_class("sheet-title-input");
-        title_entry.set_hexpand(true);
-        toolbar.append(&title_entry);
+        let name_stack = gtk::Stack::new();
+        name_stack.set_hexpand(true);
+        name_stack.set_hhomogeneous(true);
+        name_stack.add_named(&sheet_dropdown, Some("pick"));
+        name_stack.add_named(&title_entry, Some("rename"));
+        toolbar.append(&name_stack);
 
-        let new_btn = gtk::Button::builder()
-            .icon_name("list-add-symbolic")
-            .tooltip_text("Create new calculation sheet")
-            .has_frame(false)
-            .build();
-        new_btn.add_css_class("bar-button");
+        let rename_btn = nyx_ui::widgets::bar_button("document-edit-symbolic", "Rename this sheet");
+        toolbar.append(&rename_btn);
+
+        let new_btn = nyx_ui::widgets::bar_button("list-add-symbolic", "Create new calculation sheet");
         toolbar.append(&new_btn);
 
-        let copy_all_btn = gtk::Button::builder()
-            .icon_name("edit-copy-symbolic")
-            .tooltip_text("Copy all expressions and results to clipboard")
-            .has_frame(false)
-            .build();
-        copy_all_btn.add_css_class("bar-button");
+        let copy_all_btn = nyx_ui::widgets::bar_button("edit-copy-symbolic", "Copy all expressions and results to clipboard");
         toolbar.append(&copy_all_btn);
 
-        let delete_btn =
-            gtk::Button::builder().icon_name("user-trash-symbolic").tooltip_text("Delete current sheet").has_frame(false).build();
-        delete_btn.add_css_class("bar-button");
+        let delete_btn = nyx_ui::widgets::bar_button("user-trash-symbolic", "Delete current sheet");
         toolbar.append(&delete_btn);
 
         root.append(&toolbar);
 
-        // 2. Editor & Gutter Pane
-        let editor_pane = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        // 2. The editor, with each line's result drawn beside it in a gutter
+        let editor_pane = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         editor_pane.add_css_class("sheets-editor-pane");
         editor_pane.set_vexpand(true);
+        editor_pane.set_overflow(gtk::Overflow::Hidden);
 
         // Left: Multi-line text view in scrolled window
         let scrolled_editor = gtk::ScrolledWindow::builder()
@@ -93,36 +92,19 @@ impl SheetsView {
         text_view.add_css_class("sheets-text-view");
         text_view.set_monospace(true);
         text_view.set_wrap_mode(gtk::WrapMode::WordChar);
-        text_view.set_left_margin(8);
-        text_view.set_right_margin(8);
-        text_view.set_top_margin(8);
-        text_view.set_bottom_margin(8);
+        text_view.set_left_margin(12);
+        text_view.set_right_margin(12);
+        text_view.set_top_margin(10);
+        text_view.set_bottom_margin(10);
         scrolled_editor.set_child(Some(&text_view));
         editor_pane.append(&scrolled_editor);
 
-        // Right: Results gutter in scrolled window
-        let scrolled_results = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::External)
-            .vscrollbar_policy(gtk::PolicyType::External)
-            .hexpand(false)
-            .vexpand(true)
-            .build();
-        scrolled_results.set_size_request(180, -1);
-        scrolled_results.add_css_class("sheets-scrolled-results");
-
-        let results_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        results_box.add_css_class("sheets-results-box");
-        results_box.set_margin_top(8);
-        results_box.set_margin_bottom(8);
-        results_box.set_margin_start(4);
-        results_box.set_margin_end(8);
-        scrolled_results.set_child(Some(&results_box));
-        editor_pane.append(&scrolled_results);
-
-        // Synchronize scrolling between editor and gutter
-        let v_adj_editor = scrolled_editor.vadjustment();
-        let v_adj_results = scrolled_results.vadjustment();
-        v_adj_editor.bind_property("value", &v_adj_results, "value").bidirectional().build();
+        let results: LineResults = Rc::default();
+        let gutter = results_gutter(&text_view, results.clone(), toast_rc.clone());
+        scrolled_editor.vadjustment().connect_value_changed({
+            let gutter = gutter.clone();
+            move |_| gutter.queue_draw()
+        });
 
         root.append(&editor_pane);
 
@@ -132,8 +114,10 @@ impl SheetsView {
             sheets: Vec::new(),
             sheet_dropdown: sheet_dropdown.clone(),
             title_entry: title_entry.clone(),
+            name_stack: name_stack.clone(),
             text_view: text_view.clone(),
-            results_box: results_box.clone(),
+            results,
+            gutter,
             session: NaturalSession::new(),
             save_timer: None,
             on_toast: toast_rc.clone(),
@@ -161,6 +145,27 @@ impl SheetsView {
             }
             schedule_save(&st_title);
         });
+
+        // Rename: the picker becomes the name field; Enter or leaving it saves the name.
+        let st_ren = state.clone();
+        rename_btn.connect_clicked(move |_| {
+            let (stack, entry) = {
+                let st = st_ren.borrow();
+                (st.name_stack.clone(), st.title_entry.clone())
+            };
+            if stack.visible_child_name().as_deref() == Some("rename") {
+                finish_rename(&st_ren);
+            } else {
+                stack.set_visible_child_name("rename");
+                entry.grab_focus();
+            }
+        });
+        let st_act = state.clone();
+        title_entry.connect_activate(move |_| finish_rename(&st_act));
+        let focus = gtk::EventControllerFocus::new();
+        let st_leave = state.clone();
+        focus.connect_leave(move |_| finish_rename(&st_leave));
+        title_entry.add_controller(focus);
 
         // Sheet dropdown switch listener
         let st_drop = state.clone();
@@ -305,54 +310,96 @@ fn re_evaluate(state: &Rc<RefCell<SheetsState>>) {
 
     let outputs = state.borrow_mut().session.evaluate_sheet(&text);
 
-    let results_box = state.borrow().results_box.clone();
-    while let Some(child) = results_box.first_child() {
-        results_box.remove(&child);
-    }
-
-    let on_toast = state.borrow().on_toast.clone();
-
+    let mut per_line = Vec::new();
     for out in outputs {
-        let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
-        row.set_halign(gtk::Align::End);
-        row.add_css_class("sheet-result-row");
-
-        let label = gtk::Label::new(None);
-        label.set_halign(gtk::Align::End);
-        label.add_css_class("sheet-result-label");
-
-        match out.kind {
-            SheetLineKind::Empty | SheetLineKind::Comment(_) => {
-                label.set_text("");
-            }
-            SheetLineKind::Heading(_) => {
-                label.set_text("");
-            }
-            SheetLineKind::Result(res) => {
-                label.set_text(&res.formatted);
-                label.add_css_class("sheet-result-val");
-
-                // Clickable button to copy result
-                let click = gtk::GestureClick::new();
-                let text_to_copy = res.formatted.clone();
-                let toast_cb = on_toast.clone();
-                click.connect_released(move |_, _, _, _| {
-                    if let Some(display) = gdk::Display::default() {
-                        display.clipboard().set_text(&text_to_copy);
-                        toast_cb(&format!("Copied: {text_to_copy}"));
-                    }
-                });
-                row.add_controller(click);
-            }
-            SheetLineKind::Error(err) => {
-                label.set_text(&err);
-                label.add_css_class("sheet-result-error");
-            }
+        let item = match out.kind {
+            SheetLineKind::Result(res) => Some((res.formatted, false)),
+            SheetLineKind::Error(err) => Some((err, true)),
+            SheetLineKind::Empty | SheetLineKind::Comment(_) | SheetLineKind::Heading(_) => None,
+        };
+        if per_line.len() <= out.line_index {
+            per_line.resize(out.line_index + 1, None);
         }
-
-        row.append(&label);
-        results_box.append(&row);
+        per_line[out.line_index] = item;
     }
+    let (results, gutter) = {
+        let st = state.borrow();
+        (st.results.clone(), st.gutter.clone())
+    };
+    *results.borrow_mut() = per_line;
+    gutter.queue_draw();
+}
+
+/// Back from renaming: save the name now and show it in the picker.
+fn finish_rename(state: &Rc<RefCell<SheetsState>>) {
+    let (stack, cur_id, title) = {
+        let st = state.borrow();
+        (st.name_stack.clone(), st.current_sheet_id, st.title_entry.text().trim().to_string())
+    };
+    if stack.visible_child_name().as_deref() != Some("rename") {
+        return;
+    }
+    stack.set_visible_child_name("pick");
+    if let Some(id) = cur_id {
+        let title = if title.is_empty() { "Untitled Sheet".to_string() } else { title };
+        let content = {
+            let buf = state.borrow().text_view.buffer();
+            let (start, end) = buf.bounds();
+            buf.text(&start, &end, false).to_string()
+        };
+        let _ = state.borrow().db.update_sheet(id, &title, &content);
+        let list = state.borrow().db.list_sheets().unwrap_or_default();
+        populate_sheet_dropdown(state, list, Some(id));
+    }
+}
+
+/// The right-hand gutter of the editor: each line's result at the height of that line
+/// (so it stays beside it when lines wrap or the sheet scrolls); a click copies it.
+fn results_gutter(
+    text_view: &gtk::TextView,
+    results: LineResults,
+    on_toast: Rc<dyn Fn(&str)>,
+) -> gtk::DrawingArea {
+    let gutter = gtk::DrawingArea::new();
+    gutter.add_css_class("sheet-gutter");
+    gutter.set_content_width(170);
+    let tv = text_view.clone();
+    let res = results.clone();
+    gutter.set_draw_func(move |area, cr, width, _| {
+        let buffer = tv.buffer();
+        let accent = area.color();
+        let danger = gdk::RGBA::parse(nyx_theme::palette().danger.as_str()).unwrap_or(accent);
+        for (line, item) in res.borrow().iter().enumerate() {
+            let Some((text, error)) = item else { continue };
+            let Some(iter) = buffer.iter_at_line(line as i32) else { continue };
+            let row = tv.iter_location(&iter);
+            let (_, y) = tv.buffer_to_window_coords(gtk::TextWindowType::Right, 0, row.y());
+            let layout = area.create_pango_layout(Some(text));
+            layout.set_width((width - 12) * gtk::pango::SCALE);
+            layout.set_ellipsize(gtk::pango::EllipsizeMode::End);
+            layout.set_alignment(gtk::pango::Alignment::Right);
+            let (_, logical) = layout.pixel_extents();
+            let c = if *error { danger } else { accent };
+            cr.set_source_rgba(c.red() as f64, c.green() as f64, c.blue() as f64, c.alpha() as f64);
+            cr.move_to(0.0, (y + (row.height() - logical.height()) / 2) as f64);
+            pangocairo::functions::show_layout(cr, &layout);
+        }
+    });
+    let click = gtk::GestureClick::new();
+    let tv = text_view.clone();
+    click.connect_released(move |_, _, _, y| {
+        let (_, by) = tv.window_to_buffer_coords(gtk::TextWindowType::Right, 0, y as i32);
+        let (iter, _) = tv.line_at_y(by);
+        if let Some(Some((text, false))) = results.borrow().get(iter.line() as usize)
+            && let Some(display) = gdk::Display::default()
+        {
+            display.clipboard().set_text(text);
+            on_toast(&format!("Copied: {text}"));
+        }
+    });
+    gutter.add_controller(click);
+    text_view.set_gutter(gtk::TextWindowType::Right, Some(&gutter));
+    gutter
 }
 
 fn schedule_save(state: &Rc<RefCell<SheetsState>>) {

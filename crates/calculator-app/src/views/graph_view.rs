@@ -40,13 +40,11 @@ impl GraphView {
         let toast_rc: Rc<dyn Fn(&str)> = Rc::new(on_toast);
 
         // 1. Left sidebar for functions and analysis tools
+        // A fixed-width sidebar; only the plot takes spare width (STYLE.md's sidebar rule).
         let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 8);
         sidebar.add_css_class("graph-sidebar");
-        sidebar.set_size_request(240, -1);
-        sidebar.set_margin_start(10);
-        sidebar.set_margin_end(6);
-        sidebar.set_margin_top(10);
-        sidebar.set_margin_bottom(10);
+        sidebar.set_size_request(280, -1);
+        sidebar.set_hexpand(false);
 
         // Sidebar Header
         let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
@@ -56,17 +54,19 @@ impl GraphView {
         title_lbl.set_halign(gtk::Align::Start);
         header_box.append(&title_lbl);
 
-        let add_btn = gtk::Button::builder().icon_name("list-add-symbolic").tooltip_text("Add function").has_frame(false).build();
-        add_btn.add_css_class("bar-button");
+        let add_btn = nyx_ui::widgets::bar_button("list-add-symbolic", "Add function");
         header_box.append(&add_btn);
+        let reset_btn = nyx_ui::widgets::bar_button("zoom-fit-best-symbolic", "Reset view");
+        header_box.append(&reset_btn);
         sidebar.append(&header_box);
 
-        // Scrolled functions container
+        // Scrolled functions container: as tall as its functions, the tools right under it
         let scrolled_funcs = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::External)
+            .hscrollbar_policy(gtk::PolicyType::Never)
             .vscrollbar_policy(gtk::PolicyType::External)
-            .hexpand(true)
-            .vexpand(true)
+            .hexpand(false)
+            .propagate_natural_height(true)
+            .max_content_height(320)
             .build();
 
         let func_list_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
@@ -107,17 +107,14 @@ impl GraphView {
         integral_label.set_halign(gtk::Align::Start);
         tools_box.append(&integral_label);
 
-        // Reset view button
-        let reset_btn = gtk::Button::with_label("Reset View");
-        reset_btn.add_css_class("graph-reset-btn");
-        tools_box.append(&reset_btn);
-
         sidebar.append(&tools_box);
         root.append(&sidebar);
 
         // 2. Right Canvas Area
         let canvas_frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
         canvas_frame.add_css_class("graph-canvas-frame");
+        // The plot is a rounded card beside the sidebar, inset like the other modes' content.
+        canvas_frame.set_overflow(gtk::Overflow::Hidden);
         canvas_frame.set_hexpand(true);
         canvas_frame.set_vexpand(true);
 
@@ -335,7 +332,10 @@ fn refresh_function_rows(state: &Rc<RefCell<GraphState>>) {
         // Derivative toggle button
         let deriv_btn = gtk::Button::with_label("f'");
         deriv_btn.set_tooltip_text(Some("Toggle derivative curve"));
-        deriv_btn.add_css_class(if func.show_derivative { "graph-tool-toggle active" } else { "graph-tool-toggle" });
+        deriv_btn.add_css_class("graph-tool-toggle");
+        if func.show_derivative {
+            deriv_btn.add_css_class("active");
+        }
 
         let st_d = state.clone();
         let db = deriv_btn.clone();
@@ -481,8 +481,16 @@ fn draw_graph(state: &Rc<RefCell<GraphState>>, cr: &cairo::Context, width: f64, 
         let wx = i as f64 * step_x;
         let (sx, _) = vp.world_to_screen(wx, 0.0, width, height);
         let clamped_y = origin_y.clamp(14.0, height - 6.0);
-        cr.move_to(sx - 8.0, clamped_y + 12.0);
-        let _ = cr.show_text(format!("{wx:.4}").trim_end_matches('0').trim_end_matches('.'));
+        let text = format!("{wx:.4}");
+        let text = text.trim_end_matches('0').trim_end_matches('.');
+        // Labels that would be cut off at the plot's edges are left out.
+        let w = cr.text_extents(text).map(|e| e.x_advance()).unwrap_or(0.0);
+        let x = sx - w / 2.0;
+        if x < 2.0 || x + w > width - 2.0 {
+            continue;
+        }
+        cr.move_to(x, clamped_y + 12.0);
+        let _ = cr.show_text(text);
     }
     for i in major_start_y..=major_end_y {
         if i == 0 {
@@ -491,6 +499,9 @@ fn draw_graph(state: &Rc<RefCell<GraphState>>, cr: &cairo::Context, width: f64, 
         let wy = i as f64 * step_y;
         let (_, sy) = vp.world_to_screen(0.0, wy, width, height);
         let clamped_x = origin_x.clamp(6.0, width - 36.0);
+        if sy - 8.0 < 2.0 || sy + 3.0 > height - 2.0 {
+            continue;
+        }
         cr.move_to(clamped_x + 6.0, sy + 3.0);
         let _ = cr.show_text(format!("{wy:.4}").trim_end_matches('0').trim_end_matches('.'));
     }

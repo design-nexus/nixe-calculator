@@ -1,10 +1,7 @@
-/* Nyx Calculator Stylesheet conforming to STYLE.md */
-
-window.calculator-window {
-    background-color: @theme_bg;
-    color: @theme_text;
-    font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", monospace;
-}
+/* Calculator on Nyx 2.0: only Calculator's own parts. One blended surface: spacing and
+   soft fills separate the bar, display, rows and keys, never lines. Every mode keeps
+   12 px at its sides. Key rules are scoped to window.calculator-window button so they
+   win over the shared button rule. */
 
 /* Hidden scrollbars throughout */
 scrollbar, scrollbar trough, scrollbar slider {
@@ -15,51 +12,48 @@ scrollbar, scrollbar trough, scrollbar slider {
     border: none;
 }
 
-/* Top bar */
-.calc-topbar {
-    min-height: 42px;
-    padding: 6px 12px;
-    border-bottom: 1px solid @hairline;
-    background-color: @theme_bg;
-}
+/* ---------- The bar ---------- */
 
-.mode-selector {
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 0.9em;
-    font-weight: 600;
-    border: 1px solid @hairline;
-    background: @lift;
+/* The mode menu: plain text after the app's icon. */
+window.calculator-window .app-header button.mode-selector {
+    min-height: 32px;
+    padding: 0 8px;
+    background: transparent;
     color: @theme_text;
-    transition: background 150ms ease-out;
+    font-weight: 600;
 }
 
-.mode-selector:hover {
+window.calculator-window .app-header button.mode-selector:hover {
     background: @row_hover;
 }
 
-/* Display Area */
+/* History while its panel is open. */
+window.calculator-window .app-header button.toggled {
+    background: alpha(@theme_accent, 0.14);
+    color: @theme_accent;
+}
+
+/* ---------- Display ---------- */
+
 .calc-display {
-    padding: 18px 20px 14px 20px;
-    border-bottom: 1px solid @hairline;
-    background-color: @theme_bg;
+    padding: 6px 20px 10px;
 }
 
 .calc-tape {
     font-size: 0.92em;
     color: @theme_dim_text;
     font-feature-settings: "tnum" 1;
+    min-height: 20px;
 }
 
 .calc-preview {
     font-size: 1.05em;
     color: @theme_dim_text;
     font-feature-settings: "tnum" 1;
-    min-height: 22px;
 }
 
 .calc-readout {
-    font-size: 2.3em;
+    font-size: 2.4em;
     font-weight: 600;
     color: @theme_text;
     font-feature-settings: "tnum" 1;
@@ -67,14 +61,21 @@ scrollbar, scrollbar trough, scrollbar slider {
     min-height: 52px;
 }
 
+.calc-readout-small {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: @theme_text;
+    font-feature-settings: "tnum" 1;
+    min-height: 52px;
+}
+
 .calc-badge {
     font-size: 0.72em;
     font-weight: 600;
     border-radius: 4px;
-    background: @lift;
+    background: alpha(@theme_accent, 0.14);
     color: @theme_accent;
     padding: 2px 6px;
-    border: 1px solid @hairline;
 }
 
 .calc-error-badge {
@@ -84,227 +85,133 @@ scrollbar, scrollbar trough, scrollbar slider {
     background: alpha(@theme_danger, 0.12);
     color: @theme_danger;
     padding: 4px 8px;
-    border: 1px solid alpha(@theme_danger, 0.3);
 }
 
-/* Memory Bar */
+/* ---------- Memory row, angle and word-size switches ---------- */
+
 .calc-membar {
-    padding: 4px 12px;
-    border-bottom: 1px solid @hairline;
-    background-color: @theme_bg;
+    padding: 0 12px 4px;
 }
 
-.mem-btn {
-    min-height: 28px;
-    border-radius: 4px;
+.calc-ctrl-row {
+    padding: 4px 12px;
+}
+
+window.calculator-window button.mem-btn {
+    min-height: 30px;
+    padding: 0 8px;
     font-size: 0.82em;
     font-weight: 600;
     background: transparent;
-    border: none;
     color: @theme_dim_text;
-    padding: 2px 8px;
-    transition: background 150ms ease-out, color 150ms ease-out;
+    font-feature-settings: "tnum" 1;
 }
 
-.mem-btn:hover {
+window.calculator-window button.mem-btn:hover {
     background: @row_hover;
     color: @theme_text;
 }
 
-.mem-btn:active {
-    background: @nav_active;
-}
-
-.mem-btn.active {
+window.calculator-window button.mem-btn.active,
+window.calculator-window button.angle-btn {
     color: @theme_accent;
 }
 
-.mem-btn:disabled {
+window.calculator-window button.mem-btn:disabled {
     opacity: 0.35;
 }
 
-/* 64-bit programmer grid button */
-button.bit-btn {
-    min-width: 0;
-    min-height: 0;
-    padding: 2px 0;
-    font-size: 0.72em;
-    font-weight: 600;
-    border-radius: 3px;
-    background: transparent;
-    border: 1px solid transparent;
-    color: @theme_dim_text;
-    transition: background 100ms ease-out, color 100ms ease-out;
-}
+/* ---------- Keys ---------- */
 
-button.bit-btn:hover {
-    background: @row_hover;
-    color: @theme_text;
-}
-
-button.bit-btn.active {
-    color: @theme_accent;
-    font-weight: 700;
-}
-
-button.bit-btn:disabled {
-    opacity: 0.25;
-}
-
-/* Keypad Grid */
 .calc-keypad {
-    padding: 12px;
+    padding: 4px 12px 12px;
 }
 
-.calc-btn {
+window.calculator-window button.calc-btn {
     min-height: 48px;
-    border-radius: 6px;
+    padding: 0;
+    border-radius: 8px;
     font-size: 1.15em;
     font-weight: 500;
-    border: 1px solid @hairline;
-    background: @lift;
+    background: @theme_card;
     color: @theme_text;
-    transition: background 120ms ease-out, border-color 120ms ease-out;
-    padding: 0;
+    font-feature-settings: "tnum" 1;
 }
 
-.calc-btn:hover {
-    background: @row_hover;
-    border-color: mix(@theme_bg, @theme_accent, 0.4);
+window.calculator-window button.calc-btn:hover {
+    background: mix(@theme_card, @theme_text, 0.08);
 }
 
-.calc-btn:active {
-    background: @nav_active;
+window.calculator-window button.calc-btn:active {
+    background: mix(@theme_card, @theme_text, 0.14);
 }
 
-.calc-keypad-prog {
-    padding: 6px 10px;
+window.calculator-window button.calc-btn:disabled {
+    opacity: 0.35;
 }
 
-.calc-keypad-prog .calc-btn {
-    min-height: 32px;
-    font-size: 0.95em;
-}
-
-.calc-btn-digit {
-    background: mix(@theme_bg, @theme_muted, 0.06);
+/* Digits a touch brighter than the function keys around them. */
+window.calculator-window button.calc-btn-digit {
+    background: mix(@theme_card, @theme_text, 0.05);
     font-size: 1.25em;
-    font-weight: 500;
 }
 
-.calc-btn-op {
-    background: @lift;
+window.calculator-window button.calc-btn-digit:hover {
+    background: mix(@theme_card, @theme_text, 0.11);
+}
+
+window.calculator-window button.calc-btn-fn {
+    color: @theme_dim_text;
+    font-size: 1em;
+}
+
+window.calculator-window button.calc-btn-fn:hover {
+    color: @theme_text;
+}
+
+window.calculator-window button.calc-btn-op {
     color: @theme_accent;
     font-weight: 600;
+    font-size: 1.3em;
 }
 
-.calc-btn-clear {
-    background: @lift;
+window.calculator-window button.calc-btn-clear {
     color: @theme_danger;
 }
 
-.calc-btn-equals {
+/* = is the one solid accent key. */
+window.calculator-window button.calc-btn-equals {
     background: @theme_accent;
-    color: @theme_bg;
+    color: @theme_on_accent;
     font-weight: 700;
-    border: 1px solid @theme_accent;
+    font-size: 1.3em;
 }
 
-.calc-btn-equals:hover {
-    background: mix(@theme_accent, @theme_text, 0.2);
-    border-color: mix(@theme_accent, @theme_text, 0.3);
+window.calculator-window button.calc-btn-equals:hover {
+    background: mix(@theme_accent, @theme_text, 0.15);
 }
 
-.calc-btn-equals:active {
+window.calculator-window button.calc-btn-equals:active {
     background: mix(@theme_accent, @theme_bg, 0.2);
 }
 
-/* History Sidebar */
-.calc-history-sidebar {
-    border-left: 1px solid @hairline;
-    background-color: @theme_bg;
-    min-width: 280px;
+/* Programmer: smaller keys so the radix rows, bits and keypad fit. */
+window.calculator-window .calc-keypad-prog button.calc-btn {
+    min-height: 36px;
+    font-size: 0.95em;
 }
 
-.calc-history-head {
-    padding: 8px 12px;
-    border-bottom: 1px solid @hairline;
+window.calculator-window .calc-keypad-prog button.calc-btn-op,
+window.calculator-window .calc-keypad-prog button.calc-btn-equals {
+    font-size: 1.1em;
 }
 
-.calc-history-title {
-    font-size: 0.78em;
-    font-weight: 600;
-    color: @theme_dim_text;
-    letter-spacing: 1.5px;
-}
+/* ---------- Programmer: radix rows and bits ---------- */
 
-.calc-history-card {
-    padding: 8px 12px;
-    margin: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    background: transparent;
-    transition: background 150ms ease-out, border-color 150ms ease-out;
-}
-
-.calc-history-card:hover {
-    background: @row_hover;
-    border-color: @hairline;
-}
-
-.calc-history-card.pinned {
-    border-left: 3px solid @theme_accent;
-    background: mix(@theme_bg, @theme_accent, 0.05);
-}
-
-.calc-history-expr {
-    font-size: 0.88em;
-    color: @theme_dim_text;
-    font-feature-settings: "tnum" 1;
-}
-
-.calc-history-res {
-    font-size: 1.15em;
-    font-weight: 600;
-    color: @theme_text;
-    font-feature-settings: "tnum" 1;
-}
-
-/* Small action icon buttons in card */
-.history-action-btn {
-    min-height: 24px;
-    min-width: 24px;
-    padding: 2px;
-    border-radius: 4px;
-    border: none;
-    background: transparent;
-    color: @theme_dim_text;
-}
-
-.history-action-btn:hover {
-    background: @row_hover;
-    color: @theme_text;
-}
-
-/* Toast */
-.calc-toast-box {
-    margin-bottom: 16px;
-}
-
-.calc-toast {
-    padding: 6px 14px;
-    border-radius: 10px;
-    background: @theme_surface;
-    color: @theme_text;
-    border: 1px solid @hairline;
-    font-size: 0.88em;
-}
-
-/* Radix Display in Programmer Mode */
 .calc-radix-row {
     min-height: 26px;
-    padding: 3px 10px;
-    border-radius: 4px;
+    padding: 2px 10px;
+    border-radius: 6px;
     transition: background 120ms ease-out;
 }
 
@@ -314,7 +221,7 @@ button.bit-btn:disabled {
 
 .calc-radix-row.active-radix {
     background: @nav_active;
-    border-left: 3px solid @theme_accent;
+    box-shadow: inset 2px 0 @theme_accent;
 }
 
 .calc-radix-tag {
@@ -330,37 +237,126 @@ button.bit-btn:disabled {
     color: @theme_text;
 }
 
-.calc-readout-small {
-    font-size: 1.55em;
+.calc-bit-grid {
+    margin: 2px 12px 4px;
+}
+
+window.calculator-window button.bit-btn {
+    min-width: 0;
+    min-height: 22px;
+    padding: 0;
+    font-size: 0.74em;
+    font-weight: 600;
+    border-radius: 4px;
+    background: transparent;
+    color: @theme_dim_text;
+    font-feature-settings: "tnum" 1;
+}
+
+window.calculator-window button.bit-btn:hover {
+    background: @row_hover;
+    color: @theme_text;
+}
+
+window.calculator-window button.bit-btn.active {
+    color: @theme_accent;
+    font-weight: 700;
+}
+
+window.calculator-window button.bit-btn:disabled {
+    opacity: 0.25;
+}
+
+/* ---------- History panel ---------- */
+
+.calc-history-sidebar {
+    min-width: 280px;
+}
+
+/* The same height as the bar beside it, so the two read as one. */
+.calc-history-head {
+    min-height: 46px;
+    background: @theme_panel;
+    padding: 0 8px 0 14px;
+}
+
+.calc-history-title {
+    font-size: 0.78em;
+    font-weight: 600;
+    color: @theme_text_tertiary;
+    letter-spacing: 1px;
+}
+
+.calc-history-search {
+    padding: 0 12px 6px;
+}
+
+.calc-history-card {
+    padding: 8px 12px;
+    margin: 0 8px;
+    border-radius: 8px;
+    transition: background 150ms ease-out;
+}
+
+.calc-history-card:hover {
+    background: @row_hover;
+}
+
+.calc-history-card.pinned {
+    background: alpha(@theme_accent, 0.08);
+    box-shadow: inset 2px 0 @theme_accent;
+}
+
+.calc-history-expr {
+    font-size: 0.88em;
+    color: @theme_dim_text;
+    font-feature-settings: "tnum" 1;
+}
+
+.calc-history-res {
+    font-size: 1.15em;
     font-weight: 600;
     color: @theme_text;
     font-feature-settings: "tnum" 1;
-    min-height: 52px;
 }
 
-/* Unit Converter Styles */
-.converter-view {
-    padding: 8px 12px;
-}
-
-.converter-cat-label {
-    font-size: 0.85em;
-    font-weight: 600;
+/* Small action icon buttons in a card */
+window.calculator-window button.history-action-btn {
+    min-height: 24px;
+    min-width: 24px;
+    padding: 2px;
+    background: transparent;
     color: @theme_dim_text;
 }
 
-.converter-dropdown {
-    border-radius: 6px;
-    border: 1px solid @hairline;
-    background: @lift;
+window.calculator-window button.history-action-btn:hover {
+    background: @row_hover;
     color: @theme_text;
 }
 
-.converter-card {
-    background: @lift;
-    border: 1px solid @hairline;
-    border-radius: 8px;
-    padding: 12px 14px;
+/* ---------- Toast ---------- */
+
+.calc-toast-box {
+    margin-bottom: 16px;
+}
+
+.calc-toast {
+    padding: 6px 14px;
+    border-radius: 10px;
+    background: @theme_surface;
+    color: @theme_text;
+    font-size: 0.88em;
+    box-shadow: 0 4px 16px alpha(@theme_shadow, 0.4);
+}
+
+/* ---------- Unit converter ---------- */
+
+.converter-view {
+    padding: 8px 12px 12px;
+}
+
+.converter-cat-row {
+    padding: 0 14px;
 }
 
 .converter-card-title {
@@ -368,133 +364,103 @@ button.bit-btn:disabled {
     font-weight: 700;
     color: @theme_dim_text;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.converter-card {
+    background: @theme_card;
+    border-radius: 10px;
+    padding: 12px 14px;
 }
 
 .converter-input, .converter-output {
     font-size: 1.45em;
     font-weight: 600;
     color: @theme_text;
-    background: transparent;
-    border: none;
-    box-shadow: none;
     font-feature-settings: "tnum" 1;
 }
 
-.converter-swap-btn {
+window.calculator-window button.converter-swap-btn {
     min-height: 32px;
     min-width: 32px;
+    padding: 0;
     border-radius: 16px;
-    background: @lift;
-    border: 1px solid @hairline;
+    background: @theme_card;
     color: @theme_text;
-    margin: 4px 0;
 }
 
-.converter-swap-btn:hover {
+window.calculator-window button.converter-swap-btn:hover {
     background: @row_hover;
 }
 
 .converter-formula {
     font-size: 0.84em;
     color: @theme_dim_text;
-    margin-top: 4px;
     min-height: 20px;
 }
 
-.converter-chips {
-    margin-top: 4px;
-}
-
-.converter-chip {
-    font-size: 0.78em;
+window.calculator-window button.converter-chip {
+    min-height: 26px;
+    padding: 0 10px;
+    font-size: 0.8em;
     font-weight: 600;
-    border-radius: 12px;
-    padding: 3px 10px;
-    background: @lift;
-    border: 1px solid @hairline;
+    border-radius: 13px;
     color: @theme_dim_text;
 }
 
-.converter-chip:hover {
-    background: @row_hover;
+window.calculator-window button.converter-chip:hover {
     color: @theme_text;
 }
 
-/* Calculation Sheets Styles */
-.sheets-view {
-    padding: 6px 12px;
-}
+/* ---------- Calculation sheets ---------- */
 
-.sheets-toolbar {
-    min-height: 36px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid @hairline;
+.sheets-view {
+    padding: 4px 12px 12px;
 }
 
 .sheet-title-input {
-    font-size: 0.9em;
     font-weight: 600;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    color: @theme_text;
 }
 
 .sheets-editor-pane {
-    background: @lift;
-    border: 1px solid @hairline;
-    border-radius: 8px;
+    background: @theme_card;
+    border-radius: 10px;
 }
 
-.sheets-text-view {
-    font-size: 0.92em;
+.sheets-text-view,
+.sheets-text-view > text,
+.sheets-text-view > border {
     background: transparent;
     color: @theme_text;
 }
 
-.sheets-scrolled-results {
-    border-left: 1px solid @hairline;
-    background: alpha(@theme_bg, 0.4);
-}
-
-.sheet-result-row {
-    min-height: 24px;
-    padding: 1px 4px;
-}
-
-.sheet-result-label {
-    font-size: 0.88em;
+/* Results beside their lines; the colour is what the gutter draws them in. */
+.sheet-gutter {
+    color: @theme_accent;
+    font-weight: 600;
     font-feature-settings: "tnum" 1;
 }
 
-.sheet-result-val {
-    color: @theme_accent;
-    font-weight: 600;
-}
-
-.sheet-result-error {
-    color: @theme_danger;
-    font-size: 0.75em;
-}
-
-/* Graphing Calculator Styles */
-.graph-view {
-    background-color: @theme_bg;
-}
+/* ---------- Graphing calculator ---------- */
 
 .graph-sidebar {
-    border-right: 1px solid @hairline;
-    background-color: @theme_bg;
+    padding: 4px 12px 12px;
 }
 
 .graph-sidebar-title {
-    font-size: 0.9em;
-    font-weight: 700;
+    font-weight: 600;
     color: @theme_text;
 }
 
 .graph-func-row {
     padding: 2px 0;
+}
+
+/* The row's buttons are compact so the formula keeps most of the width. */
+window.calculator-window .graph-func-row button {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
 }
 
 .graph-color-dot {
@@ -503,67 +469,47 @@ button.bit-btn:disabled {
 }
 
 .graph-func-entry {
-    font-size: 0.88em;
-    font-family: "JetBrains Mono", monospace;
-    border-radius: 6px;
-    border: 1px solid @hairline;
-    background: @lift;
-    color: @theme_text;
-    padding: 4px 8px;
+    font-size: 0.9em;
+    font-feature-settings: "tnum" 1;
 }
 
 .graph-tools-box {
-    border-top: 1px solid @hairline;
-    padding-top: 8px;
+    padding-top: 10px;
 }
 
-.graph-tool-toggle {
-    font-size: 0.78em;
+window.calculator-window togglebutton.graph-tool-toggle,
+window.calculator-window button.graph-tool-toggle {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.82em;
     font-weight: 600;
-    border-radius: 6px;
-    padding: 3px 8px;
-    background: @lift;
-    border: 1px solid @hairline;
     color: @theme_dim_text;
 }
 
-.graph-tool-toggle:hover {
-    background: @row_hover;
+window.calculator-window button.graph-tool-toggle:hover {
     color: @theme_text;
 }
 
-.graph-tool-toggle.active {
-    background: mix(@theme_bg, @theme_accent, 0.25);
+window.calculator-window button.graph-tool-toggle:checked,
+window.calculator-window button.graph-tool-toggle.active {
+    background: alpha(@theme_accent, 0.14);
     color: @theme_accent;
-    border-color: @theme_accent;
+}
+
+/* f′ in a function's row: as compact as the row's other buttons. */
+window.calculator-window .graph-func-row button.graph-tool-toggle {
+    min-width: 28px;
+    padding: 0;
 }
 
 .graph-integral-label {
     font-size: 0.82em;
     font-weight: 600;
     color: @theme_accent;
-    min-height: 18px;
     margin-top: 2px;
 }
 
-.graph-reset-btn {
-    font-size: 0.82em;
-    font-weight: 600;
-    border-radius: 6px;
-    padding: 4px;
-    background: @lift;
-    border: 1px solid @hairline;
-    color: @theme_dim_text;
-    margin-top: 4px;
-}
-
-.graph-reset-btn:hover {
-    background: @row_hover;
-    color: @theme_text;
-}
-
 .graph-canvas-frame {
-    background-color: transparent;
+    margin: 4px 12px 12px 0;
+    border-radius: 10px;
 }
-
-

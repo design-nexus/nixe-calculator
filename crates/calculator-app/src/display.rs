@@ -34,6 +34,7 @@ impl DisplayView {
         let preview_label = gtk::Label::new(None);
         preview_label.add_css_class("calc-preview");
         preview_label.set_xalign(1.0);
+        preview_label.set_visible(false);
         root.append(&preview_label);
 
         // Third line: primary readout

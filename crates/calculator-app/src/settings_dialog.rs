@@ -4,7 +4,7 @@ use gtk::prelude::*;
 use nyx_ui::settings_card::{self, Spec};
 
 const GROUPS: &[(&str, &str, &str)] = &[
-    ("This window", "applications-graphics-symbolic", "Theme, glow, motion"),
+    ("This window", "applications-graphics-symbolic", "Theme, accent, motion"),
     ("Calculations", "accessories-calculator-symbolic", "Precision, separators"),
     ("History", "document-open-recent-symbolic", "Retention, clear history"),
     ("Keyboard", "input-keyboard-symbolic", "Shortcuts"),
@@ -66,12 +66,7 @@ fn window_group(p: &Page) {
     }
     group.add(&theme_row);
 
-    let (row, _) =
-        widgets::switch_row("Glow", "Soft accent glow around focused and selected elements.", current_prefs.glow, |on| {
-            prefs::update(|p| p.glow = on);
-            theme::apply();
-        });
-    group.add(&row);
+    group.add(&nyx_ui::widgets::accent_row("calculator"));
 
     let (row, _) =
         widgets::switch_row("Reduce motion", "Turn off transitions in this window.", current_prefs.reduce_motion, |on| {

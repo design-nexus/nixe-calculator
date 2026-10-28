@@ -36,6 +36,7 @@ pub(crate) struct Ui {
     sidebar: Rc<RefCell<HistorySidebar>>,
     sidebar_container: gtk::Box,
     mode_btn: gtk::Button,
+    hist_btn: gtk::Button,
     db: CalculatorDb,
     memory: MemoryRegister,
     toast: gtk::Label,
@@ -125,13 +126,25 @@ fn build(app: &gtk::Application) {
     let calc_v_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     calc_v_box.set_hexpand(true);
 
-    // Top bar
-    let topbar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    topbar.add_css_class("calc-topbar");
+    // The one bar: the app's icon and the mode menu, then History and Settings. Built
+    // like nyx_ui::chrome::app_header but without window controls: Calculator always
+    // floats, and at 360 px they would crowd the bar.
+    let bar = gtk::CenterBox::new();
+    bar.add_css_class("app-header");
+    let bar_start = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let app_icon = gtk::Image::from_icon_name("accessories-calculator-symbolic");
+    app_icon.add_css_class("app-icon");
+    bar_start.append(&app_icon);
+    let bar_end = gtk::Box::new(gtk::Orientation::Horizontal, 2);
+    bar.set_start_widget(Some(&bar_start));
+    bar.set_end_widget(Some(&bar_end));
+    let topbar = gtk::WindowHandle::new();
+    topbar.set_child(Some(&bar));
 
     // Mode dropdown button & Popover
     let mode_btn = gtk::Button::with_label("Standard ▾");
     mode_btn.add_css_class("mode-selector");
+    mode_btn.set_valign(gtk::Align::Center);
     mode_btn.set_tooltip_text(Some("Switch mode (Alt+1 to Alt+6)"));
 
     let popover = gtk::Popover::new();
@@ -197,27 +210,15 @@ fn build(app: &gtk::Application) {
         switch_mode("graph");
     });
 
-    topbar.append(&mode_btn);
+    bar_start.append(&mode_btn);
 
-    let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    spacer.set_hexpand(true);
-    topbar.append(&spacer);
-
-    // History toggle button
-    let hist_btn = gtk::Button::builder()
-        .icon_name("document-open-recent-symbolic")
-        .tooltip_text("Calculation history (Ctrl+H)")
-        .has_frame(false)
-        .build();
-    hist_btn.add_css_class("bar-button");
-    topbar.append(&hist_btn);
-
-    // Settings button
-    let settings_btn =
-        gtk::Button::builder().icon_name("emblem-system-symbolic").tooltip_text("Settings (Ctrl+,)").has_frame(false).build();
-    settings_btn.add_css_class("bar-button");
-    settings_btn.connect_clicked(|_| settings_dialog::open());
-    topbar.append(&settings_btn);
+    // History toggle (accent-tinted while the panel is open) and Settings
+    let hist_btn = nyx_ui::widgets::bar_button("document-open-recent-symbolic", "Calculation history (Ctrl+H)");
+    if prefs::get().history_open {
+        hist_btn.add_css_class("toggled");
+    }
+    bar_end.append(&hist_btn);
+    bar_end.append(&chrome::settings_button(settings_dialog::open));
 
     calc_v_box.append(&topbar);
 
@@ -331,6 +332,7 @@ fn build(app: &gtk::Application) {
         sidebar,
         sidebar_container,
         mode_btn,
+        hist_btn,
         db,
         memory: MemoryRegister::new(),
         toast: toast_lbl,
@@ -355,8 +357,8 @@ fn build(app: &gtk::Application) {
 pub fn mode_dimensions(mode: &str) -> (i32, i32) {
     match mode {
         "scientific" => (500, 580),
-        "programmer" => (580, 760),
-        "converter" => (420, 560),
+        "programmer" => (580, 660),
+        "converter" => (420, 450),
         "sheets" => (680, 580),
         "graph" => (780, 600),
         _ => (360, 540),
@@ -379,6 +381,8 @@ pub fn switch_mode(mode: &str) {
         };
 
         ui.content_stack.set_visible_child_name(stack_view);
+        // The programmer pad's DEC row is the value; no second big readout above it.
+        ui.display.readout_label.set_visible(mode != "programmer");
         ui.keypad_stack.set_visible_child_name(keypad_view);
         ui.mode_btn.set_label(label);
         chrome::set_title(&ui.window, "Calculator", title);
@@ -861,6 +865,11 @@ pub fn toggle_history() {
         let current_vis = ui.sidebar_container.is_visible();
         let new_vis = !current_vis;
         ui.sidebar_container.set_visible(new_vis);
+        if new_vis {
+            ui.hist_btn.add_css_class("toggled");
+        } else {
+            ui.hist_btn.remove_css_class("toggled");
+        }
         (new_vis, ui.mode.clone())
     };
 

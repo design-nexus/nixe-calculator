@@ -30,21 +30,20 @@ impl HistorySidebar {
         title.set_xalign(0.0);
         head.append(&title);
 
-        let clear_btn =
-            gtk::Button::builder().icon_name("user-trash-symbolic").tooltip_text("Clear all history").has_frame(false).build();
-        clear_btn.add_css_class("history-action-btn");
+        let clear_btn = nyx_ui::widgets::bar_button("user-trash-symbolic", "Clear all history");
         head.append(&clear_btn);
-        root.append(&head);
+        // The head continues the window's bar: same height, and it drags the window too.
+        let handle = gtk::WindowHandle::new();
+        handle.set_child(Some(&head));
+        root.append(&handle);
 
         // Search entry
         let search_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        search_box.set_margin_start(8);
-        search_box.set_margin_end(8);
-        search_box.set_margin_top(6);
-        search_box.set_margin_bottom(6);
+        search_box.add_css_class("calc-history-search");
         let search_entry = gtk::SearchEntry::new();
         search_entry.set_hexpand(true);
-        search_entry.set_placeholder_text(Some("Search calculations..."));
+        search_entry.add_css_class("sidebar-search");
+        search_entry.set_placeholder_text(Some("Search calculations"));
         search_box.append(&search_entry);
         root.append(&search_box);
 

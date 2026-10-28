@@ -31,15 +31,16 @@ impl ConverterView {
     pub fn new(on_toast: impl Fn(&str) + 'static) -> Self {
         let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
         root.add_css_class("converter-view");
-        root.set_margin_start(16);
-        root.set_margin_end(16);
-        root.set_margin_top(12);
-        root.set_margin_bottom(16);
+        // Category, From and To share one label column, so their dropdowns line up.
+        let labels = gtk::SizeGroup::new(gtk::SizeGroupMode::Horizontal);
 
-        // 1. Category selector
+        // 1. Category selector (outside the cards, so indented by the cards' padding)
         let cat_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let cat_label = gtk::Label::new(Some("Category:"));
-        cat_label.add_css_class("converter-cat-label");
+        cat_box.add_css_class("converter-cat-row");
+        let cat_label = gtk::Label::new(Some("Category"));
+        cat_label.add_css_class("converter-card-title");
+        cat_label.set_xalign(0.0);
+        labels.add_widget(&cat_label);
         cat_box.append(&cat_label);
 
         let cat_names: Vec<&str> = UnitCategory::ALL.iter().map(|c| c.display_name()).collect();
@@ -61,6 +62,8 @@ impl ConverterView {
         let from_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         let from_title = gtk::Label::new(Some("From"));
         from_title.add_css_class("converter-card-title");
+        from_title.set_xalign(0.0);
+        labels.add_widget(&from_title);
         from_header.append(&from_title);
 
         let from_strings = gtk::StringList::new(&[]);
@@ -95,6 +98,8 @@ impl ConverterView {
         let to_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         let to_title = gtk::Label::new(Some("To"));
         to_title.add_css_class("converter-card-title");
+        to_title.set_xalign(0.0);
+        labels.add_widget(&to_title);
         to_header.append(&to_title);
 
         let to_strings = gtk::StringList::new(&[]);
@@ -104,19 +109,16 @@ impl ConverterView {
         to_header.append(&to_dropdown);
         to_card.append(&to_header);
 
-        let to_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        // The result, as wide as the input above it; its copy button sits inside the field.
         let to_entry = gtk::Entry::new();
         to_entry.set_editable(false);
         to_entry.set_can_focus(true);
         to_entry.add_css_class("converter-output");
         to_entry.set_hexpand(true);
-        to_row.append(&to_entry);
-
-        let copy_btn =
-            gtk::Button::builder().icon_name("edit-copy-symbolic").tooltip_text("Copy converted result").has_frame(false).build();
-        copy_btn.add_css_class("bar-button");
-        to_row.append(&copy_btn);
-        to_card.append(&to_row);
+        to_entry.set_secondary_icon_name(Some("edit-copy-symbolic"));
+        to_entry.set_secondary_icon_tooltip_text(Some("Copy converted result"));
+        to_entry.set_secondary_icon_activatable(true);
+        to_card.append(&to_entry);
 
         cards_box.append(&to_card);
         root.append(&cards_box);
@@ -201,7 +203,7 @@ impl ConverterView {
         // Connect Copy button
         let st_copy = state.clone();
         let toast_fn = Rc::new(on_toast);
-        copy_btn.connect_clicked(move |_| {
+        to_entry.connect_icon_press(move |_, _| {
             let text = st_copy.borrow().to_entry.text().to_string();
             if !text.is_empty()
                 && let Some(display) = gdk::Display::default()
