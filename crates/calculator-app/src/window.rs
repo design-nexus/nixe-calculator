@@ -338,7 +338,7 @@ fn build(app: &gtk::Application) {
         toast: toast_lbl,
         toast_timer: None,
         mode: "standard".into(),
-        angle_mode: AngleMode::Degrees,
+        angle_mode: if prefs::get().radians { AngleMode::Radians } else { AngleMode::Degrees },
         programmer: ProgrammerState::new(),
         input_buffer: String::new(),
         tape_text: String::new(),
@@ -349,6 +349,7 @@ fn build(app: &gtk::Application) {
     UI.with(|u| *u.borrow_mut() = Some(state));
 
     let initial_mode = std::env::var("CALCULATOR_MODE").unwrap_or_else(|_| prefs::get().calculator_mode);
+    apply_angle_preference();
     if initial_mode != "standard" {
         switch_mode(&initial_mode);
     }
@@ -612,6 +613,7 @@ pub fn handle_action(action: KeyAction) {
                 AngleMode::Degrees => AngleMode::Radians,
                 AngleMode::Radians => AngleMode::Degrees,
             };
+            prefs::update(|p| p.radians = ui.angle_mode == AngleMode::Radians);
             ui.scientific_keypad.set_angle_mode(ui.angle_mode);
             let mode_name = match ui.angle_mode {
                 AngleMode::Degrees => "Degrees (DEG)",
@@ -908,6 +910,15 @@ pub fn paste_to_expression() {
             }
         }
     });
+}
+
+pub fn apply_angle_preference() {
+    if let Some(state) = ui() {
+        let mut ui = state.borrow_mut();
+        ui.angle_mode = if prefs::get().radians { AngleMode::Radians } else { AngleMode::Degrees };
+        ui.scientific_keypad.set_angle_mode(ui.angle_mode);
+        update_readout(&mut ui);
+    }
 }
 
 pub fn refresh_display() {

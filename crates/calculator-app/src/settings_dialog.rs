@@ -49,6 +49,21 @@ fn calc_group(p: &Page) {
     let group = p.group("Calculations");
     let current = prefs::get();
 
+    let (row, _) = widgets::choice_row(
+        "Angles", "Units for trigonometric calculations.",
+        vec![("degrees".into(), "Degrees".into()), ("radians".into(), "Radians".into())],
+        if current.radians { "radians" } else { "degrees" },
+        |id| { prefs::update(|p| p.radians = id == "radians"); window::apply_angle_preference(); },
+    );
+    group.add(&row);
+    let (row, _) = widgets::choice_row(
+        "Start in", "Mode to open next time. Switching modes also remembers your choice.",
+        vec![("standard".into(), "Standard".into()), ("scientific".into(), "Scientific".into()),
+             ("programmer".into(), "Programmer".into()), ("converter".into(), "Unit converter".into()),
+             ("sheets".into(), "Calculation sheets".into()), ("graph".into(), "Graph".into())],
+        &current.calculator_mode, |id| prefs::update(|p| p.calculator_mode = id),
+    );
+    group.add(&row);
     let prec_options = vec![
         ("0".into(), "Automatic".into()),
         ("2".into(), "2 decimal places".into()),

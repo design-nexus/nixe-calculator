@@ -14,6 +14,7 @@ pub struct Prefs {
     pub history_enabled: bool,
     pub history_retention: usize, // max items to retain
     pub calculator_mode: String,
+    pub radians: bool,
 }
 
 impl Default for Prefs {
@@ -29,6 +30,7 @@ impl Default for Prefs {
             history_enabled: true,
             history_retention: 100,
             calculator_mode: "standard".into(),
+            radians: false,
         }
     }
 }
