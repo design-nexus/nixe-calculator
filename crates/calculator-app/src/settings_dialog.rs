@@ -1,16 +1,33 @@
 use crate::widgets::{self, Page};
-use crate::{prefs, theme, window};
+use crate::{prefs, window};
 use gtk::prelude::*;
-use nyx_ui::settings_card::{self, Spec};
+use nyx_ui::settings_card::{self, About, Spec, Standard};
 
 const GROUPS: &[(&str, &str, &str)] = &[
-    ("This window", "applications-graphics-symbolic", "Theme, accent, motion"),
     ("Calculations", "accessories-calculator-symbolic", "Precision, separators"),
     ("History", "document-open-recent-symbolic", "Retention, clear history"),
-    ("Keyboard", "input-keyboard-symbolic", "Shortcuts"),
 ];
 
-const SPEC: Spec = Spec { groups: GROUPS, search_text: None };
+const SPEC: Spec = Spec {
+    groups: GROUPS,
+    search_text: None,
+    standard: Some(Standard {
+        app: "calculator",
+        about: About {
+            name: "Calculator",
+            icon: "io.github.design_nexus.nyx.Calculator",
+            version: env!("CARGO_PKG_VERSION"),
+            description: "Standard, scientific and programmer modes, units, sheets and graphs.",
+            licence: "MIT",
+            website: "https://github.com/design-nexus/nyx-calculator",
+            issues: "https://github.com/design-nexus/nyx-calculator/issues",
+            credits: &[],
+        },
+        shortcuts: SHORTCUTS,
+        reduce_motion: || prefs::get().reduce_motion,
+        set_reduce_motion: |on| prefs::update(|p| p.reduce_motion = on),
+    }),
+};
 
 pub fn open() {
     let (Some(overlay), Some(win)) = (window::overlay(), window::window()) else {
@@ -24,56 +41,8 @@ pub fn open() {
 }
 
 fn build_content(p: &Page) {
-    window_group(p);
     calc_group(p);
     history_group(p);
-    keyboard_group(p);
-}
-
-fn window_group(p: &Page) {
-    let group = p.group("This window");
-    group.add(&nyx_ui::widgets::start_row());
-    let current_prefs = prefs::get();
-
-    let options: Vec<(String, String)> = theme::all().iter().map(|t| (t.id.clone(), t.name.clone())).collect();
-
-    let (theme_row, theme_dd) =
-        widgets::choice_row("Theme", "A bundled theme, or one of your own.", options, &current_prefs.theme, |id| {
-            prefs::update(|p| {
-                p.theme = id;
-                p.mode = prefs::ThemeMode::Theme;
-            });
-            theme::apply();
-        });
-
-    theme_dd.set_sensitive(current_prefs.mode == prefs::ThemeMode::Theme || !theme::omarchy_available());
-
-    if theme::omarchy_available() {
-        let dd = theme_dd.clone();
-        let (row, _) = widgets::switch_row(
-            "Follow Omarchy theme",
-            "Match the desktop's colors and update when the Omarchy theme changes.",
-            current_prefs.mode == prefs::ThemeMode::Omarchy,
-            move |on| {
-                prefs::update(|p| {
-                    p.mode = if on { prefs::ThemeMode::Omarchy } else { prefs::ThemeMode::Theme };
-                });
-                dd.set_sensitive(!on);
-                theme::apply();
-            },
-        );
-        group.add(&row);
-    }
-    group.add(&theme_row);
-
-    group.add(&nyx_ui::widgets::accent_row("calculator"));
-
-    let (row, _) =
-        widgets::switch_row("Reduce motion", "Turn off transitions in this window.", current_prefs.reduce_motion, |on| {
-            prefs::update(|p| p.reduce_motion = on);
-            theme::apply();
-        });
-    group.add(&row);
 }
 
 fn calc_group(p: &Page) {
@@ -143,33 +112,27 @@ fn history_group(p: &Page) {
     group.add(&row);
 }
 
-fn keyboard_group(p: &Page) {
-    let group = p.group("Keyboard");
-    let shortcuts: &[(&[&str], &str)] = &[
-        (&["Alt", "1"], "Standard mode"),
-        (&["Alt", "2"], "Scientific mode"),
-        (&["Alt", "3"], "Programmer mode"),
-        (&["Alt", "4"], "Unit Converter"),
-        (&["Alt", "5"], "Calculation Sheets"),
-        (&["Alt", "6"], "Graphing Calculator"),
-        (&["0–9", "."], "Enter digits and decimal point"),
-        (&["+", "−", "×", "÷"], "Basic arithmetic operations"),
-        (&["Enter", "="], "Calculate result"),
-        (&["Backspace"], "Delete last character"),
-        (&["Esc", "C"], "Clear current expression"),
-        (&["Ctrl", "H"], "Toggle history sidebar"),
-        (&["Ctrl", "C"], "Copy result to clipboard"),
-        (&["Ctrl", "V"], "Paste expression"),
-        (&["Ctrl", "M"], "Store current value in memory (MS)"),
-        (&["Ctrl", "R"], "Recall memory value (MR)"),
-        (&["Ctrl", "P"], "Add to memory (M+)"),
-        (&["Ctrl", "Q"], "Subtract from memory (M−)"),
-        (&["Ctrl", "L"], "Clear memory register (MC)"),
-        (&["Ctrl", ","], "Open settings"),
-        (&["F1"], "Show shortcuts dialog"),
-    ];
-
-    for (keys, what) in shortcuts {
-        group.add(&widgets::row(what, "", Some(widgets::key_caps(keys).upcast_ref())));
-    }
-}
+/// Every shortcut, for the card's Keyboard group.
+const SHORTCUTS: &[(&[&str], &str)] = &[
+    (&["Alt", "1"], "Standard mode"),
+    (&["Alt", "2"], "Scientific mode"),
+    (&["Alt", "3"], "Programmer mode"),
+    (&["Alt", "4"], "Unit Converter"),
+    (&["Alt", "5"], "Calculation Sheets"),
+    (&["Alt", "6"], "Graphing Calculator"),
+    (&["0–9", "."], "Enter digits and decimal point"),
+    (&["+", "−", "×", "÷"], "Basic arithmetic operations"),
+    (&["Enter", "="], "Calculate result"),
+    (&["Backspace"], "Delete last character"),
+    (&["Esc", "C"], "Clear current expression"),
+    (&["Ctrl", "H"], "Toggle history sidebar"),
+    (&["Ctrl", "C"], "Copy result to clipboard"),
+    (&["Ctrl", "V"], "Paste expression"),
+    (&["Ctrl", "M"], "Store current value in memory (MS)"),
+    (&["Ctrl", "R"], "Recall memory value (MR)"),
+    (&["Ctrl", "P"], "Add to memory (M+)"),
+    (&["Ctrl", "Q"], "Subtract from memory (M−)"),
+    (&["Ctrl", "L"], "Clear memory register (MC)"),
+    (&["Ctrl", ","], "Open settings"),
+    (&["F1"], "Show shortcuts dialog"),
+];
