@@ -167,6 +167,12 @@ fn build(app: &gtk::Application) {
     let btn_m_graph = gtk::Button::with_label("Graphing Calculator");
     btn_m_graph.add_css_class("flat");
 
+    for b in [&btn_m_std, &btn_m_sci, &btn_m_prg, &btn_m_conv, &btn_m_sheets, &btn_m_graph] {
+        if let Some(label) = b.child().and_downcast::<gtk::Label>() {
+            label.set_xalign(0.0);
+        }
+    }
+
     pop_box.append(&btn_m_std);
     pop_box.append(&btn_m_sci);
     pop_box.append(&btn_m_prg);
